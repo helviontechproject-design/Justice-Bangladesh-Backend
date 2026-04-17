@@ -16,7 +16,8 @@ export const categoryZ = z.object({
     .optional(),
   imageUrl: z.string().url('invalid url').optional(),
   isFeatured: booleanField.optional(),
-  isActive: booleanField.optional()
+  isActive: booleanField.optional(),
+  consultationFee: z.union([z.number(), z.string().transform(Number)]).optional(),
 });
 
 

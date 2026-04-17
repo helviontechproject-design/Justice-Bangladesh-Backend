@@ -42,6 +42,11 @@ const categorySchema = new Schema<ICategory>(
       default: true,
       index: true,
     },
+    consultationFee: {
+      type: Number,
+      default: 500,
+      min: 0,
+    },
   },
   {
     timestamps: true,

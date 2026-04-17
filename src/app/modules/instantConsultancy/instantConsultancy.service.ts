@@ -6,7 +6,7 @@ import AppError from '../../errorHelpers/AppError';
 import { ClientProfileModel } from '../client/client.model';
 import { LawyerProfileModel } from '../lawyer/lawyer.model';
 import { InstantConsultancyModel } from './instantConsultancy.model';
-import { InstantConsultancyStatus } from './instantConsultancy.interface';
+import { InstantConsultancyStatus, INSTANT_CONSULTATION_FEE } from './instantConsultancy.interface';
 import { envVars } from '../../config/env';
 import { sendFCMToTokens } from '../../utils/fcm';
 
@@ -39,13 +39,17 @@ const buildToken = (channelName: string, uid: number): string => {
 
 const createRequest = async (decodedUser: JwtPayload, payload: {
   categoryId: string;
-  callType: 'audio' | 'video';
   note?: string;
+  bkashPaymentID?: string;
 }) => {
   const client = await ClientProfileModel.findOne({ userId: decodedUser.userId });
   if (!client) throw new AppError(StatusCodes.NOT_FOUND, 'Client profile not found');
 
   const clientName = `${client.profileInfo?.fast_name || ''} ${client.profileInfo?.last_name || ''}`.trim() || 'Client';
+
+  // Get fee from category
+  const category = await (await import('../category/category.model')).default.findById(payload.categoryId);
+  const fee = category?.consultationFee ?? INSTANT_CONSULTATION_FEE;
 
   const onlineLawyers = await LawyerProfileModel.find({
     isOnline: true,
@@ -63,17 +67,20 @@ const createRequest = async (decodedUser: JwtPayload, payload: {
   const request = await InstantConsultancyModel.create({
     clientId: (client._id as any),
     categoryId: payload.categoryId,
-    callType: payload.callType || 'audio',
+    callType: 'audio',
     note: payload.note,
     channelName,
     status: InstantConsultancyStatus.WAITING,
+    fee,
+    paymentStatus: 'paid',
+    bkashPaymentID: payload.bkashPaymentID,
   });
 
   const requestId = (request._id as any).toString();
 
   pendingRequests.set(requestId, {
     channelName,
-    callType: payload.callType || 'audio',
+    callType: 'audio',
     clientName,
     categoryId: payload.categoryId,
     appId,
@@ -90,7 +97,7 @@ const createRequest = async (decodedUser: JwtPayload, payload: {
         await sendFCMToTokens(
           tokens,
           '📞 Instant Consultation Request',
-          `${clientName} needs ${payload.callType || 'audio'} consultation. Be the first to accept!`,
+          `${clientName} needs audio consultation. Be the first to accept!`,
         );
       } catch (_) {}
     }
@@ -101,6 +108,7 @@ const createRequest = async (decodedUser: JwtPayload, payload: {
     channelName,
     clientToken,
     appId,
+    fee,
     status: InstantConsultancyStatus.WAITING,
   };
 };

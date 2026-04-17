@@ -16,8 +16,7 @@ import { Payment } from "../payment/payment.model";
 import { PaymentStatus, PaymentType } from "../payment/payment.interface";
 import { WalletModel } from "../wallet/wallet.model";
 import { ERole } from "../user/user.interface";
-import { ISSLCommerz } from "../payment/sslCommerz/sslCommerz.interface";
-import { SSLService } from "../payment/sslCommerz/sslCommerz.service";
+import { BkashService } from "../bkash/bkash.service";
 import { ConversationModel } from "../chat/conversation/conversation.model";
 import { UserModel } from "../user/user.model";
 import { Request } from "express";
@@ -182,25 +181,27 @@ const createAppointment = async (
       { session },
     );
 
-    const userAddress =
-      client.profileInfo.street_address ||
-      client.profileInfo.district ||
-      "Bangladesh";
     const userEmail = client.profileInfo.email || "demo@gmail.com";
-    const userPhoneNumber = client.profileInfo.phone;
     const userName =
       client.profileInfo.fast_name + " " + client.profileInfo.last_name;
 
-    const sslPayload: ISSLCommerz = {
-      address: userAddress,
-      email: userEmail,
-      phoneNumber: userPhoneNumber,
-      name: userName,
-      amount: payment[0].amount,
-      transactionId: payment[0]?.transactionId,
-    };
+    // bKash payment init
+    const orderId = `APT-${transactionId}`;
+    const bkashRes = await BkashService.createPayment({
+      amount: String(payment[0].amount),
+      orderId,
+      merchantInvoiceNumber: orderId,
+    }) as any;
 
-    const sslPayment = await SSLService.sslPaymentInit(sslPayload);
+    let bkashURL: string | null = null;
+    let bkashPaymentID: string | null = null;
+
+    if (bkashRes?.statusCode === '0000') {
+      bkashURL = bkashRes.bkashURL;
+      bkashPaymentID = bkashRes.paymentID;
+      // Store bkashPaymentID in payment record
+      await Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+    }
 
     await session.commitTransaction();
     session.endSession();
@@ -220,8 +221,8 @@ const createAppointment = async (
 
     return {
       appointmentId,
-      paymentUrl:
-        sslPayment?.GatewayPageURL || sslPayment?.gatewayPageURL || null,
+      bkashURL,
+      bkashPaymentID,
       transactionId: payment[0].transactionId,
     };
   } catch (error) {

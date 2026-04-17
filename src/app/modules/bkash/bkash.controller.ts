@@ -8,6 +8,10 @@ import { ServiceBookingModel } from '../serviceBooking/serviceBooking.model';
 import { ServiceBookingStatus } from '../serviceBooking/serviceBooking.interface';
 import { ClientProfileModel } from '../client/client.model';
 import { ServiceModel } from '../service/service.model';
+import { Appointment } from '../appointment/appointment.model';
+import { AppointmentPaymentStatus } from '../appointment/appointment.interface';
+import { Payment } from '../payment/payment.model';
+import { PaymentStatus } from '../payment/payment.interface';
 import AppError from '../../errorHelpers/AppError';
 
 function generateTrackingCode(): string {
@@ -57,7 +61,7 @@ const createPayment = catchAsync(async (req: Request, res: Response) => {
 // Step 2: bKash redirects back → execute payment & create booking
 const executePayment = catchAsync(async (req: Request, res: Response) => {
   const decodedUser = req.user as JwtPayload;
-  const { paymentID, serviceId } = req.body;
+  const { paymentID, serviceId, appointmentId } = req.body;
 
   if (!paymentID) throw new AppError(StatusCodes.BAD_REQUEST, 'paymentID is required');
 
@@ -67,6 +71,33 @@ const executePayment = catchAsync(async (req: Request, res: Response) => {
     throw new AppError(StatusCodes.BAD_REQUEST, `Payment not completed: ${executeRes.statusMessage}`);
   }
 
+  // ── Appointment payment ──
+  if (appointmentId) {
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) throw new AppError(StatusCodes.NOT_FOUND, 'Appointment not found');
+
+    appointment.payment_Status = AppointmentPaymentStatus.PAID;
+    await appointment.save();
+
+    await Payment.findByIdAndUpdate(appointment.paymentId, {
+      status: PaymentStatus.PAID,
+      bkashPaymentID: paymentID,
+      trxID: executeRes.trxID,
+    });
+
+    return sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'Appointment payment successful',
+      data: {
+        appointmentId,
+        trxID: executeRes.trxID,
+        amount: executeRes.amount,
+      },
+    });
+  }
+
+  // ── Service booking payment ──
   const service = await ServiceModel.findById(serviceId);
   if (!service) throw new AppError(StatusCodes.NOT_FOUND, 'Service not found');
 
