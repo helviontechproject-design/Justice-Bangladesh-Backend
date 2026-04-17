@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.clientRoute = void 0;
+const express_1 = require("express");
+const checkAuth_1 = require("../../middlewares/checkAuth");
+const user_interface_1 = require("../user/user.interface");
+const client_controller_1 = require("./client.controller");
+const router = (0, express_1.Router)();
+router.get('/', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), client_controller_1.clientController.getAllClients);
+router.get('/:id', client_controller_1.clientController.getClientbyid);
+router.patch('/update-client/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT, user_interface_1.ERole.SUPER_ADMIN), client_controller_1.clientController.updateClient);
+router.post('/save-lawyer/:lawyerId', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), client_controller_1.clientController.toggleSaveLawyer);
+router.get('/saved-lawyers/my', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), client_controller_1.clientController.getSavedLawyers);
+router.patch('/ban/:userId', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), client_controller_1.clientController.banClient);
+router.patch('/unban/:userId', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), client_controller_1.clientController.unbanClient);
+router.delete('/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), client_controller_1.clientController.deleteClient);
+exports.clientRoute = router;

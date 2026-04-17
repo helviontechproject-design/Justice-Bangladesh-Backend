@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.agoraRoute = void 0;
+const express_1 = require("express");
+const agora_controller_1 = require("./agora.controller");
+const checkAuth_1 = require("../../middlewares/checkAuth");
+exports.agoraRoute = (0, express_1.Router)();
+exports.agoraRoute.post('/token', (0, checkAuth_1.checkAuth)('CLIENT', 'LAWYER'), agora_controller_1.generateAgoraToken);
+exports.agoraRoute.post('/call/initiate', (0, checkAuth_1.checkAuth)('CLIENT'), agora_controller_1.initiateCall);
+exports.agoraRoute.get('/call/pending', agora_controller_1.getPendingCall);
+exports.agoraRoute.post('/call/reject', (0, checkAuth_1.checkAuth)('LAWYER', 'CLIENT'), agora_controller_1.rejectCall);

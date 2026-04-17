@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.blogRoute = void 0;
+const express_1 = require("express");
+const checkAuth_1 = require("../../middlewares/checkAuth");
+const user_interface_1 = require("../user/user.interface");
+const multer_config_1 = require("../../config/multer.config");
+const blog_controller_1 = require("./blog.controller");
+const router = (0, express_1.Router)();
+router.get('/', blog_controller_1.blogController.getAllBlogs);
+router.get('/admin/all', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), blog_controller_1.blogController.getAllBlogsAdmin);
+router.post('/create', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), multer_config_1.multerUpload.single('imageUrl'), blog_controller_1.blogController.createBlog);
+router.patch('/update/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), multer_config_1.multerUpload.single('imageUrl'), blog_controller_1.blogController.updateBlog);
+router.delete('/delete/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), blog_controller_1.blogController.deleteBlog);
+exports.blogRoute = router;
