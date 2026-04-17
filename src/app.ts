@@ -17,6 +17,7 @@ const app = express();
 const allowedOrigins = [
   envVars.FRONTEND_URL,
   'https://justice-bangladesh-admin.vercel.app',
+  'https://admin.justicebangladesh.com/',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
