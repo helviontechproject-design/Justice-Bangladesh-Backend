@@ -41,6 +41,14 @@ const bootstrap = async () => {
 
 bootstrap();
 
+// For Vercel: ensure DB is connected on each cold start
+if (process.env.VERCEL === '1') {
+  app.use(async (req, res, next) => {
+    await connectToDB();
+    next();
+  });
+}
+
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received. Shutting down the server gracefully...');
   if (server) {
