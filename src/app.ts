@@ -16,6 +16,7 @@ const app = express();
 // Allow multiple origins: production Vercel URL + local dev
 const allowedOrigins = [
   envVars.FRONTEND_URL,
+  'https://justice-bangladesh-admin.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
