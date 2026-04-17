@@ -26,12 +26,12 @@ const payment_model_1 = require("../payment/payment.model");
 const payment_interface_1 = require("../payment/payment.interface");
 const wallet_model_1 = require("../wallet/wallet.model");
 const user_interface_1 = require("../user/user.interface");
-const sslCommerz_service_1 = require("../payment/sslCommerz/sslCommerz.service");
+const bkash_service_1 = require("../bkash/bkash.service");
 const conversation_model_1 = require("../chat/conversation/conversation.model");
 const user_model_1 = require("../user/user.model");
 const notification_helper_1 = require("../notification/notification.helper");
 const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
+    var _a, _b;
     if (!decodedUser.userId) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.UNAUTHORIZED, "Unauthorized user");
     }
@@ -143,21 +143,23 @@ const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, vo
         const lawyerProfile = yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(payload.lawyerId, {
             $inc: { appointments_Count: 1 },
         }, { session });
-        const userAddress = client.profileInfo.street_address ||
-            client.profileInfo.district ||
-            "Bangladesh";
         const userEmail = client.profileInfo.email || "demo@gmail.com";
-        const userPhoneNumber = client.profileInfo.phone;
         const userName = client.profileInfo.fast_name + " " + client.profileInfo.last_name;
-        const sslPayload = {
-            address: userAddress,
-            email: userEmail,
-            phoneNumber: userPhoneNumber,
-            name: userName,
-            amount: payment[0].amount,
-            transactionId: (_c = payment[0]) === null || _c === void 0 ? void 0 : _c.transactionId,
-        };
-        const sslPayment = yield sslCommerz_service_1.SSLService.sslPaymentInit(sslPayload);
+        // bKash payment init
+        const orderId = `APT-${transactionId}`;
+        const bkashRes = yield bkash_service_1.BkashService.createPayment({
+            amount: String(payment[0].amount),
+            orderId,
+            merchantInvoiceNumber: orderId,
+        });
+        let bkashURL = null;
+        let bkashPaymentID = null;
+        if ((bkashRes === null || bkashRes === void 0 ? void 0 : bkashRes.statusCode) === '0000') {
+            bkashURL = bkashRes.bkashURL;
+            bkashPaymentID = bkashRes.paymentID;
+            // Store bkashPaymentID in payment record
+            yield payment_model_1.Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+        }
         yield session.commitTransaction();
         session.endSession();
         // Notify lawyer about new appointment request
@@ -174,7 +176,8 @@ const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, vo
         }
         return {
             appointmentId,
-            paymentUrl: (sslPayment === null || sslPayment === void 0 ? void 0 : sslPayment.GatewayPageURL) || (sslPayment === null || sslPayment === void 0 ? void 0 : sslPayment.gatewayPageURL) || null,
+            bkashURL,
+            bkashPaymentID,
             transactionId: payment[0].transactionId,
         };
     }

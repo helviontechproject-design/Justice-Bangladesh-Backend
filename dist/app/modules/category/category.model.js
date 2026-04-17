@@ -41,6 +41,11 @@ const categorySchema = new mongoose_1.Schema({
         default: true,
         index: true,
     },
+    consultationFee: {
+        type: Number,
+        default: 500,
+        min: 0,
+    },
 }, {
     timestamps: true,
 });

@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -39,11 +72,14 @@ const buildToken = (channelName, uid) => {
     return agora_token_1.RtcTokenBuilder.buildTokenWithUid(AGORA_APP_ID, AGORA_APP_CERTIFICATE, channelName, uid, agora_token_1.RtcRole.PUBLISHER, expireTime, expireTime);
 };
 const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a, _b, _c;
     const client = yield client_model_1.ClientProfileModel.findOne({ userId: decodedUser.userId });
     if (!client)
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Client profile not found');
     const clientName = `${((_a = client.profileInfo) === null || _a === void 0 ? void 0 : _a.fast_name) || ''} ${((_b = client.profileInfo) === null || _b === void 0 ? void 0 : _b.last_name) || ''}`.trim() || 'Client';
+    // Get fee from category
+    const category = yield (yield Promise.resolve().then(() => __importStar(require('../category/category.model')))).default.findById(payload.categoryId);
+    const fee = (_c = category === null || category === void 0 ? void 0 : category.consultationFee) !== null && _c !== void 0 ? _c : instantConsultancy_interface_1.INSTANT_CONSULTATION_FEE;
     const onlineLawyers = yield lawyer_model_1.LawyerProfileModel.find({
         isOnline: true,
         categories: new mongoose_1.Types.ObjectId(payload.categoryId),
@@ -57,15 +93,18 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
     const request = yield instantConsultancy_model_1.InstantConsultancyModel.create({
         clientId: client._id,
         categoryId: payload.categoryId,
-        callType: payload.callType || 'audio',
+        callType: 'audio',
         note: payload.note,
         channelName,
         status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
+        fee,
+        paymentStatus: 'paid',
+        bkashPaymentID: payload.bkashPaymentID,
     });
     const requestId = request._id.toString();
     pendingRequests.set(requestId, {
         channelName,
-        callType: payload.callType || 'audio',
+        callType: 'audio',
         clientName,
         categoryId: payload.categoryId,
         appId,
@@ -78,7 +117,7 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
         const tokens = (lawyerUser === null || lawyerUser === void 0 ? void 0 : lawyerUser.fcmTokens) || ((lawyerUser === null || lawyerUser === void 0 ? void 0 : lawyerUser.fcmToken) ? [lawyerUser.fcmToken] : []);
         if (tokens.length > 0) {
             try {
-                yield (0, fcm_1.sendFCMToTokens)(tokens, '📞 Instant Consultation Request', `${clientName} needs ${payload.callType || 'audio'} consultation. Be the first to accept!`);
+                yield (0, fcm_1.sendFCMToTokens)(tokens, '📞 Instant Consultation Request', `${clientName} needs audio consultation. Be the first to accept!`);
             }
             catch (_) { }
         }
@@ -88,6 +127,7 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
         channelName,
         clientToken,
         appId,
+        fee,
         status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
     };
 });

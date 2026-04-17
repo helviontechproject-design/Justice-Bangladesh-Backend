@@ -37,20 +37,29 @@ const sendWhatsAppOTP = (phone, otp) => __awaiter(void 0, void 0, void 0, functi
         console.log(`[DEV] OTP for ${phone}: ${otp} (test code: ${TEST_OTP})`);
         return;
     }
+    if (!env_1.envVars.META_WHATSAPP.ACCESS_TOKEN || !env_1.envVars.META_WHATSAPP.PHONE_NUMBER_ID) {
+        console.warn(`[OTP] WhatsApp not configured. OTP for ${phone}: ${otp}`);
+        return;
+    }
     const formattedPhone = phone.startsWith('+') ? phone : `+88${phone}`;
-    yield axios_1.default.post(`https://graph.facebook.com/v19.0/${env_1.envVars.META_WHATSAPP.PHONE_NUMBER_ID}/messages`, {
-        messaging_product: 'whatsapp',
-        to: formattedPhone,
-        type: 'text',
-        text: {
-            body: `আপনার Justice Bangladesh যাচাইকরণ কোড: *${otp}*\n\nএই কোডটি ${OTP_EXPIRY_MINUTES} মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে শেয়ার করবেন না।`,
-        },
-    }, {
-        headers: {
-            Authorization: `Bearer ${env_1.envVars.META_WHATSAPP.ACCESS_TOKEN}`,
-            'Content-Type': 'application/json',
-        },
-    });
+    try {
+        yield axios_1.default.post(`https://graph.facebook.com/v19.0/${env_1.envVars.META_WHATSAPP.PHONE_NUMBER_ID}/messages`, {
+            messaging_product: 'whatsapp',
+            to: formattedPhone,
+            type: 'text',
+            text: {
+                body: `আপনার Justice Bangladesh যাচাইকরণ কোড: *${otp}*\n\nএই কোডটি ${OTP_EXPIRY_MINUTES} মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে শেয়ার করবেন না।`,
+            },
+        }, {
+            headers: {
+                Authorization: `Bearer ${env_1.envVars.META_WHATSAPP.ACCESS_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    }
+    catch (err) {
+        console.error(`[OTP] WhatsApp send failed for ${phone}:`, err);
+    }
 });
 const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d, _e;

@@ -14,6 +14,7 @@ exports.categoryZ = zod_1.z.object({
         .optional(),
     imageUrl: zod_1.z.string().url('invalid url').optional(),
     isFeatured: booleanField.optional(),
-    isActive: booleanField.optional()
+    isActive: booleanField.optional(),
+    consultationFee: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(Number)]).optional(),
 });
 exports.updateCategoryZ = exports.categoryZ.partial();
