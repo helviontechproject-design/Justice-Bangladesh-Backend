@@ -51,8 +51,8 @@ app.use(express.json());
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true }));
 
-// node-cron does not run on Vercel serverless — only start on traditional server
-if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_CRON === 'true') {
+// Enable cron on traditional servers (Hostinger) or when explicitly enabled
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
   cron.schedule('* * * * *', async () => {
     await appointmentService.cancelUnpaidAppointments();
   });
