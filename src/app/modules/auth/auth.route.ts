@@ -23,6 +23,16 @@ router.post('/login', AuthController.userLogin)
 
 router.post('/admin-login', AuthController.adminLogin)
 
+router.get('/admin-debug', async (req, res) => {
+  const { UserModel } = await import('../user/user.model');
+  const admin = await UserModel.findOne({ email: process.env.ADMIN_EMAIL }).select('email role isActive isVerified');
+  res.json({
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'NOT SET',
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ? 'SET' : 'NOT SET',
+    adminUserInDB: admin || 'NOT FOUND',
+  });
+})
+
 router.post('/logout', checkAuth(...Object.values(ERole)), AuthController.logout)
 
 router.post('/refresh-token', AuthController.getNewAccessToken)
