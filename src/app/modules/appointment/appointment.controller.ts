@@ -141,17 +141,70 @@ const updatePaymentStatus = catchAsync(
   },
 );
 
+const rescheduleAppointment = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { newDate, newTime } = req.body;
+    const decodedUser = req.user;
+    
+    const appointment = await appointmentService.rescheduleAppointment(
+      id,
+      decodedUser as JwtPayload,
+      newDate,
+      newTime,
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: "Appointment rescheduled successfully",
+      data: appointment,
+    });
+  },
+);
+
+const cancelAppointmentWithRefund = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const decodedUser = req.user;
+    
+    const result = await appointmentService.cancelAppointmentWithRefund(
+      id,
+      decodedUser as JwtPayload,
+      reason,
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: result.message,
+      data: {
+        appointment: result.appointment,
+        refundAmount: result.refundAmount,
+        refundPercentage: result.refundPercentage,
+      },
+    });
+  },
+);
+
 const deleteAppointment = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
     const decodedUser = req.user;
-    await appointmentService.deleteAppointment(id, decodedUser as JwtPayload);
+    
+    // For now, redirect to cancel with refund
+    const result = await appointmentService.cancelAppointmentWithRefund(
+      id,
+      decodedUser as JwtPayload,
+      'Appointment deleted by user',
+    );
 
     sendResponse(res, {
       success: true,
       statusCode: StatusCodes.OK,
       message: "Appointment deleted successfully",
-      data: null,
+      data: result,
     });
   },
 );
@@ -227,6 +280,8 @@ export const appointmentController = {
   updateAppointment,
   updateAppointmentStatus,
   updatePaymentStatus,
+  rescheduleAppointment,
+  cancelAppointmentWithRefund,
   deleteAppointment,
   getAppointmentStats,
 };

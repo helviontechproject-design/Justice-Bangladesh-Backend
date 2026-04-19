@@ -49,6 +49,16 @@ export const setAvailability = async (
 
     await existingAvailability.save();
 
+    // Auto-enable visibility settings when availability is saved
+    const visibilityUpdate: any = {};
+    if (payload.bookingType === 'Video Call') visibilityUpdate.videoConsult = true;
+    else if (payload.bookingType === 'Audio Call') visibilityUpdate.audioCall = true;
+    else if (payload.bookingType === 'In Person') visibilityUpdate.inPerson = true;
+    
+    if (Object.keys(visibilityUpdate).length > 0) {
+      await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+    }
+
     return {
       success: true,
       message: `Availability for ${payload.month} updated successfully`,
@@ -72,6 +82,16 @@ export const setAvailability = async (
       { new: true },
     );
 
+    // Auto-enable visibility settings when availability is created
+    const visibilityUpdate: any = {};
+    if (payload.bookingType === 'Video Call') visibilityUpdate.videoConsult = true;
+    else if (payload.bookingType === 'Audio Call') visibilityUpdate.audioCall = true;
+    else if (payload.bookingType === 'In Person') visibilityUpdate.inPerson = true;
+    
+    if (Object.keys(visibilityUpdate).length > 0) {
+      await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+    }
+
     return {
       success: true,
       message: `Availability for ${payload.month} created successfully`,
@@ -81,7 +101,14 @@ export const setAvailability = async (
 };
 
 const getAvailability = async (query: Record<string, string>) => {
-  const availabilities = AvailabilityModel.find();
+  let filter = {};
+  
+  // If lawyerId is provided, filter by it
+  if (query.lawyerId) {
+    filter = { lawyerId: query.lawyerId };
+  }
+  
+  const availabilities = AvailabilityModel.find(filter);
 
   const queryBuilder = new QueryBuilder(availabilities, query);
 
@@ -94,6 +121,26 @@ const getAvailability = async (query: Record<string, string>) => {
     allAvailabilities.build().exec(),
     queryBuilder.getMeta(),
   ]);
+
+  // If lawyerId is provided, also check lawyer's visibility settings
+  if (query.lawyerId && data.length > 0) {
+    const lawyer = await LawyerProfileModel.findById(query.lawyerId);
+    if (lawyer) {
+      // Filter availability based on lawyer's visibility settings
+      const filteredData = data.filter(availability => {
+        const bookingType = availability.bookingType;
+        if (bookingType === 'Video Call' && !lawyer.videoConsult) return false;
+        if (bookingType === 'Audio Call' && !lawyer.audioCall) return false;
+        if (bookingType === 'In Person' && !lawyer.inPerson) return false;
+        return availability.isActive !== false; // Only show active availabilities
+      });
+      
+      return {
+        data: filteredData,
+        meta: { ...meta, total: filteredData.length },
+      };
+    }
+  }
 
   return {
     data,
@@ -149,20 +196,11 @@ const getMyAvailability = async (
     throw new AppError(StatusCodes.UNAUTHORIZED, "Unauthorized user");
   }
 
-  const availabilities = AvailabilityModel.find({ lawyerId: lawyer._id });
-
-  const queryBuilder = new QueryBuilder(availabilities, query);
-
-  const allAvailabilities = queryBuilder.filter().paginate();
-
-  const [data, meta] = await Promise.all([
-    allAvailabilities.build().exec(),
-    queryBuilder.getMeta(),
-  ]);
+  const availabilities = await AvailabilityModel.find({ lawyerId: lawyer._id }).sort({ month: 1 });
 
   return {
-    data,
-    meta,
+    data: availabilities,
+    meta: { total: availabilities.length },
   };
 };
 
@@ -184,11 +222,59 @@ async function adminSetAvailability(payload: Partial<IAvailability>) {
     existing.availableDates = availableDates || existing.availableDates;
     if (isActive !== undefined) existing.isActive = isActive;
     await existing.save();
+    
+    // Auto-enable visibility settings when availability is saved
+    const visibilityUpdate: any = {};
+    if (bookingType === 'Video Call') visibilityUpdate.videoConsult = true;
+    else if (bookingType === 'Audio Call') visibilityUpdate.audioCall = true;
+    else if (bookingType === 'In Person') visibilityUpdate.inPerson = true;
+    
+    if (Object.keys(visibilityUpdate).length > 0) {
+      await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+    }
+    
     return existing;
   }
   const created = await AvailabilityModel.create({ lawyerId, bookingType, month, availableDates: availableDates || [], isActive: isActive ?? true });
   await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $addToSet: { availability: created._id } });
+  
+  // Auto-enable visibility settings when availability is created
+  const visibilityUpdate: any = {};
+  if (bookingType === 'Video Call') visibilityUpdate.videoConsult = true;
+  else if (bookingType === 'Audio Call') visibilityUpdate.audioCall = true;
+  else if (bookingType === 'In Person') visibilityUpdate.inPerson = true;
+  
+  if (Object.keys(visibilityUpdate).length > 0) {
+    await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+  }
+  
   return created;
+}
+
+async function syncAvailabilityWithVisibility(lawyerId: string) {
+  const lawyer = await LawyerProfileModel.findById(lawyerId);
+  if (!lawyer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Lawyer not found');
+  }
+
+  const availabilities = await AvailabilityModel.find({ lawyerId: new Types.ObjectId(lawyerId) });
+  const visibilityUpdate: any = {};
+  
+  // Check what consultation types have availability and auto-enable them
+  for (const availability of availabilities) {
+    if (availability.isActive && availability.availableDates && availability.availableDates.length > 0) {
+      if (availability.bookingType === 'Video Call') visibilityUpdate.videoConsult = true;
+      else if (availability.bookingType === 'Audio Call') visibilityUpdate.audioCall = true;
+      else if (availability.bookingType === 'In Person') visibilityUpdate.inPerson = true;
+    }
+  }
+  
+  if (Object.keys(visibilityUpdate).length > 0) {
+    await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+    return { message: 'Visibility settings synced with availability', updated: visibilityUpdate };
+  }
+  
+  return { message: 'No sync needed', updated: {} };
 }
 
 export const availabilityService = {
@@ -199,4 +285,5 @@ export const availabilityService = {
   getMyAvailability,
   getAvailabilityByLawyerId,
   adminSetAvailability,
+  syncAvailabilityWithVisibility,
 };

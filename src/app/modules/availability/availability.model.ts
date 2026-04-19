@@ -36,7 +36,7 @@ const AvailabilitySchema = new Schema<IAvailability>(
     },
     bookingType: {
       type: String,
-      enum: ['online', 'In Persona', 'chat'],
+      enum: ['Video Call', 'Audio Call', 'In Person'],
       required: true,
     },
     month: { type: String, required: true },

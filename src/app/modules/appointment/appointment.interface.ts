@@ -28,12 +28,16 @@ export interface IAppointment extends Document {
   videoCallingTime?: number;
   appointmentDate: Date;
   appointmentType: AppointmentType;
-  selectedTime: string
+  selectedTime: string;
   caseType: string;
   note?: string;
   documents: string[];
   status: AppointmentStatus;
   payment_Status: AppointmentPaymentStatus;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: Date;
+  totalFee?: number;
   createdAt: Date;
   updatedAt: Date;
 }

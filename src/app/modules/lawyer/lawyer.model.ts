@@ -61,6 +61,16 @@ const ChamberSchema = new Schema(
   { _id: false }
 );
 
+const ExtensionPricingSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    per_minute_rate: { type: Number, default: 0 },
+    max_extension_minutes: { type: Number, default: 30 },
+    description: { type: String },
+  },
+  { _id: false }
+);
+
 const PayoutMethodSchema = new Schema(
   {
     type: { type: String, enum: ['Bank', 'bKash', 'Nagad'], default: 'bKash' },
@@ -120,6 +130,7 @@ const LawyerProfileSchema = new Schema<ILawyerProfile>(
     video_fees: [{ minutes: { type: Number }, fee: { type: Number }, _id: false }],
     chamber_fee: { type: Number, default: 0 },
     chamber_duration: { type: Number, default: 15 },
+    extension_pricing: { type: ExtensionPricingSchema, default: { enabled: false, per_minute_rate: 0, max_extension_minutes: 30 } },
     payoutMethod: { type: PayoutMethodSchema, default: null },
     withdrawals: [{ type: Types.ObjectId, ref: 'Withdrawal' }],
   },

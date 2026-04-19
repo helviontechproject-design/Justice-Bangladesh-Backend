@@ -117,27 +117,83 @@ const updateLawyer = async (decodedUser: JwtPayload, lawyerId: string, payload: 
     payload.chambers_Count = payload.chambers.length;
   }
 
-  // Flatten nested objects into dot-notation $set to prevent overwriting
-  // sibling fields inside the same nested object (e.g. lawyerDetails, profile_Details)
+  // Handle consultation fee arrays properly
+  const processedPayload = { ...payload };
+  
+  // Process call_fees array
+  if ((payload as any).call_fees !== undefined) {
+    const callFees = (payload as any).call_fees;
+    if (Array.isArray(callFees)) {
+      processedPayload.call_fees = callFees
+        .filter((fee: any) => fee && (fee.minutes || fee.fee))
+        .map((fee: any) => ({
+          minutes: parseInt(fee.minutes) || 0,
+          fee: parseInt(fee.fee) || 0
+        }));
+    } else {
+      processedPayload.call_fees = [];
+    }
+  }
+  
+  // Process video_fees array
+  if ((payload as any).video_fees !== undefined) {
+    const videoFees = (payload as any).video_fees;
+    if (Array.isArray(videoFees)) {
+      processedPayload.video_fees = videoFees
+        .filter((fee: any) => fee && (fee.minutes || fee.fee))
+        .map((fee: any) => ({
+          minutes: parseInt(fee.minutes) || 0,
+          fee: parseInt(fee.fee) || 0
+        }));
+    } else {
+      processedPayload.video_fees = [];
+    }
+  }
+  
+  // Process chamber fee
+  if ((payload as any).chamber_fee !== undefined) {
+    processedPayload.chamber_fee = parseInt((payload as any).chamber_fee) || 0;
+  }
+  
+  if ((payload as any).chamber_duration !== undefined) {
+    processedPayload.chamber_duration = parseInt((payload as any).chamber_duration) || 15;
+  }
+
+  // Direct update for arrays to avoid dot-notation issues
+  const directUpdates: Record<string, unknown> = {};
   const flatSet: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(payload)) {
-    if (
+  
+  for (const [key, value] of Object.entries(processedPayload)) {
+    if (key === 'call_fees' || key === 'video_fees') {
+      // Handle arrays directly
+      directUpdates[key] = value;
+    } else if (
       value !== null &&
       typeof value === 'object' &&
       !Array.isArray(value) &&
       !(value instanceof Date)
     ) {
+      // Handle nested objects with dot notation
       for (const [nestedKey, nestedValue] of Object.entries(value as Record<string, unknown>)) {
         flatSet[`${key}.${nestedKey}`] = nestedValue;
       }
     } else {
+      // Handle primitive values
       flatSet[key] = value;
     }
   }
 
+  // Combine both update strategies
+  const updateQuery = {
+    $set: {
+      ...flatSet,
+      ...directUpdates
+    }
+  };
+
   const updatedLawyer = await LawyerProfileModel.findByIdAndUpdate(
     lawyerId,
-    { $set: flatSet },
+    updateQuery,
     { new: true }
   );
   return updatedLawyer;
@@ -329,7 +385,106 @@ const adminUpdateLawyer = async (lawyerId: string, payload: Partial<ILawyerProfi
   const profile = await LawyerProfileModel.findById(lawyerId);
   if (!profile) throw new AppError(StatusCodes.NOT_FOUND, 'Lawyer not found');
 
-  return LawyerProfileModel.findByIdAndUpdate(lawyerId, payload, { new: true })
+  if (Array.isArray((payload as any).chambers)) {
+    (payload as any).chambers_Count = (payload as any).chambers.length;
+  }
+
+  // Handle consultation fee arrays properly
+  const processedPayload = { ...payload };
+  
+  // Process call_fees array - handle both string and array inputs
+  if ((payload as any).call_fees !== undefined) {
+    const callFees = (payload as any).call_fees;
+    if (typeof callFees === 'string') {
+      try {
+        processedPayload.call_fees = JSON.parse(callFees);
+      } catch {
+        processedPayload.call_fees = [];
+      }
+    } else if (Array.isArray(callFees)) {
+      processedPayload.call_fees = callFees
+        .filter((fee: any) => fee && (fee.minutes || fee.fee)) // Filter out empty entries
+        .map((fee: any) => ({
+          minutes: parseInt(fee.minutes) || 0,
+          fee: parseInt(fee.fee) || 0
+        }));
+    } else {
+      processedPayload.call_fees = [];
+    }
+  }
+  
+  // Process video_fees array - handle both string and array inputs
+  if ((payload as any).video_fees !== undefined) {
+    const videoFees = (payload as any).video_fees;
+    if (typeof videoFees === 'string') {
+      try {
+        processedPayload.video_fees = JSON.parse(videoFees);
+      } catch {
+        processedPayload.video_fees = [];
+      }
+    } else if (Array.isArray(videoFees)) {
+      processedPayload.video_fees = videoFees
+        .filter((fee: any) => fee && (fee.minutes || fee.fee)) // Filter out empty entries
+        .map((fee: any) => ({
+          minutes: parseInt(fee.minutes) || 0,
+          fee: parseInt(fee.fee) || 0
+        }));
+    } else {
+      processedPayload.video_fees = [];
+    }
+  }
+  
+  // Process chamber fee
+  if ((payload as any).chamber_fee !== undefined) {
+    processedPayload.chamber_fee = parseInt((payload as any).chamber_fee) || 0;
+  }
+  
+  if ((payload as any).chamber_duration !== undefined) {
+    processedPayload.chamber_duration = parseInt((payload as any).chamber_duration) || 15;
+  }
+
+  // Direct update for arrays to avoid dot-notation issues
+  const directUpdates: Record<string, unknown> = {};
+  const flatSet: Record<string, unknown> = {};
+  
+  for (const [key, value] of Object.entries(processedPayload)) {
+    if (key === 'call_fees' || key === 'video_fees') {
+      // Handle arrays directly
+      directUpdates[key] = value;
+    } else if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      !(value instanceof Date)
+    ) {
+      // Handle nested objects with dot notation
+      for (const [nestedKey, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+        flatSet[`${key}.${nestedKey}`] = nestedValue;
+      }
+    } else {
+      // Handle primitive values
+      flatSet[key] = value;
+    }
+  }
+
+  // Combine both update strategies
+  const updateQuery = {
+    $set: {
+      ...flatSet,
+      ...directUpdates
+    }
+  };
+
+  console.log('Updating lawyer with consultation fees:', {
+    lawyerId,
+    call_fees: processedPayload.call_fees,
+    video_fees: processedPayload.video_fees,
+    chamber_fee: processedPayload.chamber_fee,
+    chamber_duration: processedPayload.chamber_duration,
+    updateQuery
+  });
+
+  return LawyerProfileModel.findByIdAndUpdate(lawyerId, updateQuery, { new: true })
     .populate('userId', 'email profilePhoto isActive isVerified phoneNo')
     .populate('specialties', 'title')
     .populate('categories', 'name slug');

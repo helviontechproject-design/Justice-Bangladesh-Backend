@@ -23,6 +23,21 @@ const TEST_OTP = '5805';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+const normalizePhone = (phone?: string) => {
+  if (!phone) return '';
+  let value = phone.toString().trim();
+  if (value.startsWith('+')) {
+    value = '+' + value.slice(1).replace(/\D/g, '');
+  } else {
+    value = value.replace(/\D/g, '');
+    if (!value.startsWith('88')) {
+      value = `88${value}`;
+    }
+    value = `+${value}`;
+  }
+  return value;
+};
+
 // Skip WhatsApp in dev — just save OTP to DB silently
 const sendWhatsAppOTP = async (phone: string, otp: string) => {
   if (process.env.NODE_ENV !== 'production') {
@@ -58,11 +73,12 @@ const sendWhatsAppOTP = async (phone: string, otp: string) => {
 };
 
 export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
-  if (!payload.phone) {
+  const phone = normalizePhone(payload.phone);
+  if (!phone) {
     throw new AppError(StatusCodes.BAD_REQUEST, "Phone Number Not Found!");
   }
   const isPhoneExist = await UserModel.findOne({
-    'phoneNo.value': payload.phone,
+    'phoneNo.value': phone,
   });
   if (isPhoneExist) {
     if (isPhoneExist.role === ERole.CLIENT) {
@@ -97,7 +113,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
         {
           email: payload.email,
           phoneNo: {
-            value: payload.phone,
+            value: phone,
           },
           role: ERole.LAWYER,
           isVerified: !OTP_ENABLED,
@@ -117,7 +133,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
             fast_name: payload.fast_name || '',
             last_name: payload.last_name || '',
             email: payload.email || '',
-            phone: payload.phone || '',
+            phone,
             paypal_Email: (payload as any).profile_Details?.paypal_Email || '',
             street_address: (payload as any).profile_Details?.street_address || '',
             district: (payload as any).profile_Details?.district || '',
@@ -173,7 +189,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
       await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
       await session.commitTransaction();
       session.endSession();
-      await sendWhatsAppOTP(payload.phone!, otp);
+      await sendWhatsAppOTP(phone, otp);
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -194,12 +210,13 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
 };
 
 export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
-  if (!payload.phone) {
+  const phone = normalizePhone(payload.phone);
+  if (!phone) {
     throw new AppError(StatusCodes.BAD_REQUEST, "Phone Number Not Found!");
   }
 
   const isPhoneExist = await UserModel.findOne({
-    "phoneNo.value": payload.phone,
+    "phoneNo.value": phone,
   });
 
   if (isPhoneExist) {
@@ -229,7 +246,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
         {
           email: payload.email,
           phoneNo: {
-            value: payload.phone,
+            value: phone,
           },
           role: ERole.CLIENT,
           // OTP disabled temporarily for development — mark verified immediately
@@ -250,7 +267,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
             fast_name: payload.fast_name || "",
             last_name: payload.last_name || "",
             email: payload.email || "",
-            phone: payload.phone || "",
+            phone,
             paypal_Email: "",
             street_address: "",
             district: "",
@@ -276,7 +293,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
       await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
       await session.commitTransaction();
       session.endSession();
-      await sendWhatsAppOTP(payload.phone!, otp);
+      await sendWhatsAppOTP(phone, otp);
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -297,11 +314,12 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
 };
 
 export const verifyOTP = async (payload: { phone: string; otp?: string }) => {
-  if (!payload.phone) {
+  const phone = normalizePhone(payload.phone);
+  if (!phone) {
     throw new AppError(StatusCodes.BAD_REQUEST, "Phone Number Missing");
   }
 
-  const user = await UserModel.findOne({ "phoneNo.value": payload.phone });
+  const user = await UserModel.findOne({ "phoneNo.value": phone });
   if (!user) {
     throw new AppError(StatusCodes.NOT_FOUND, "User Not Found");
   }
@@ -363,7 +381,12 @@ export const verifyOTP = async (payload: { phone: string; otp?: string }) => {
 };
 
 export const userLogin = async (payload: { phone: string }) => {
-  let user = await UserModel.findOne({ 'phoneNo.value': payload.phone });
+  const phone = normalizePhone(payload.phone);
+  if (!phone) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Phone Number Not Found');
+  }
+
+  let user = await UserModel.findOne({ 'phoneNo.value': phone });
 
   // Deleted user — treat as new user
   if (user?.isDeleted) {
@@ -377,7 +400,7 @@ export const userLogin = async (payload: { phone: string }) => {
     session.startTransaction();
     try {
       const created = await UserModel.create([{
-        phoneNo: { value: payload.phone },
+        phoneNo: { value: phone },
         role: ERole.CLIENT,
         isVerified: !OTP_ENABLED,
         isActive: EIsActive.ACTIVE,
@@ -385,7 +408,7 @@ export const userLogin = async (payload: { phone: string }) => {
       const userId = created[0]._id;
       const clientProfile = await ClientProfileModel.create([{
         userId,
-        profileInfo: { phone: payload.phone },
+        profileInfo: { phone },
         gender: 'MALE',
       }], { session });
       await UserModel.findByIdAndUpdate(userId,
@@ -416,7 +439,7 @@ export const userLogin = async (payload: { phone: string }) => {
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-    await sendWhatsAppOTP(payload.phone, otp);
+    await sendWhatsAppOTP(phone, otp);
     return {
       message: 'Verification code sent via WhatsApp!',
       role: user.role,
@@ -439,11 +462,12 @@ export const userLogin = async (payload: { phone: string }) => {
 };
 
 export const resendOTP = async (payload: { phone: string }) => {
-  if (!payload.phone) {
+  const phone = normalizePhone(payload.phone);
+  if (!phone) {
     throw new AppError(StatusCodes.BAD_REQUEST, "Phone Number Missing");
   }
 
-  const user = await UserModel.findOne({ "phoneNo.value": payload.phone });
+  const user = await UserModel.findOne({ "phoneNo.value": phone });
   if (!user) {
     throw new AppError(StatusCodes.NOT_FOUND, "User Not Found");
   }
@@ -451,7 +475,7 @@ export const resendOTP = async (payload: { phone: string }) => {
   const otp = generateOTP();
   const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-  await sendWhatsAppOTP(payload.phone, otp);
+  await sendWhatsAppOTP(phone, otp);
 
   return {
     success: true,
@@ -482,7 +506,7 @@ export const addPhoneNo = async (
 
   //  Update user phone and status
   user.phoneNo = {
-    value: payload.phone.toString(),
+    value: normalizePhone(payload.phone?.toString()),
     isVerified: false,
   };
   user.isActive = EIsActive.INACTIVE;
@@ -492,7 +516,7 @@ export const addPhoneNo = async (
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-    await sendWhatsAppOTP(payload.phone.toString(), otp);
+    await sendWhatsAppOTP(normalizePhone(payload.phone?.toString()), otp);
   }
 
   return {
@@ -546,6 +570,11 @@ export const firebasePhoneLogin = async (payload: { idToken: string; phone: stri
     throw new AppError(StatusCodes.BAD_REQUEST, 'idToken and phone are required');
   }
 
+  const phone = normalizePhone(payload.phone);
+  if (!phone) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Phone Number Not Found');
+  }
+
   // 1. Verify the Firebase ID token — throws if invalid/expired
   const decoded = await admin.auth().verifyIdToken(payload.idToken);
   if (!decoded.phone_number && !decoded.uid) {
@@ -553,7 +582,7 @@ export const firebasePhoneLogin = async (payload: { idToken: string; phone: stri
   }
 
   // 2. Find existing user by phone
-  let user = await UserModel.findOne({ 'phoneNo.value': payload.phone });
+  let user = await UserModel.findOne({ 'phoneNo.value': phone });
 
   // 3. Auto-create client if first login
   if (!user) {
@@ -561,7 +590,7 @@ export const firebasePhoneLogin = async (payload: { idToken: string; phone: stri
     session.startTransaction();
     try {
       const created = await UserModel.create([{
-        phoneNo: { value: payload.phone, isVerified: true },
+        phoneNo: { value: phone, isVerified: true },
         role: ERole.CLIENT,
         isVerified: true,
         isActive: EIsActive.ACTIVE,
@@ -569,7 +598,7 @@ export const firebasePhoneLogin = async (payload: { idToken: string; phone: stri
       const userId = created[0]._id;
       const clientProfile = await ClientProfileModel.create([{
         userId,
-        profileInfo: { phone: payload.phone },
+        profileInfo: { phone },
         gender: 'MALE',
       }], { session });
       await UserModel.findByIdAndUpdate(userId, { client: clientProfile[0]._id }, { session });

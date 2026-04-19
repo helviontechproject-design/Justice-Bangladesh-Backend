@@ -78,6 +78,20 @@ router.delete(
   appointmentController.deleteAppointment
 );
 
+// Reschedule appointment (CLIENT only)
+router.patch(
+  '/:id/reschedule',
+  checkAuth(ERole.CLIENT),
+  appointmentController.rescheduleAppointment
+);
+
+// Cancel appointment with refund (CLIENT or LAWYER)
+router.post(
+  '/:id/cancel',
+  checkAuth(ERole.CLIENT, ERole.LAWYER),
+  appointmentController.cancelAppointmentWithRefund
+);
+
 
 
 

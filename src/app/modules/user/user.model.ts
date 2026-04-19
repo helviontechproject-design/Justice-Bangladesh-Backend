@@ -16,7 +16,9 @@ const UserSchema = new Schema<IUser>(
       type: new Schema({
         value: {
           type: String,
+          unique: true,
           sparse: true,
+          trim: true,
         },
         isVerified: {
           type: Boolean,

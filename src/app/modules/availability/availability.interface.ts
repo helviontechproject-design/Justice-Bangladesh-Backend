@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 
 export type ScheduleStatus = 'available' | 'booked' | 'pending' | 'cancelled';
-export type BookingType = 'online' | 'In Persona' | 'chat';
+export type BookingType = 'Video Call' | 'Audio Call' | 'In Person';
 
 export interface ISchedule {
   time: string;

@@ -17,6 +17,9 @@ router.get('/admin/lawyer/:lawyerId', checkAuth(ERole.SUPER_ADMIN), availability
 // Admin: set availability for a lawyer
 router.post('/admin/set', checkAuth(ERole.SUPER_ADMIN), availabilityController.adminSetAvailability)
 
+// Admin: sync availability with visibility settings
+router.post('/admin/sync/:lawyerId', checkAuth(ERole.SUPER_ADMIN), availabilityController.syncAvailabilityWithVisibility)
+
 // Get all availability (public or filtered by lawyerId)
 router.get('/get-availability', availabilityController.getAvailability)
 

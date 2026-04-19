@@ -100,6 +100,12 @@ const adminSetAvailability = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: 'Availability saved', data });
 });
 
+const syncAvailabilityWithVisibility = catchAsync(async (req: Request, res: Response) => {
+  const { lawyerId } = req.params;
+  const data = await availabilityService.syncAvailabilityWithVisibility(lawyerId);
+  sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: data.message, data: data.updated });
+});
+
 export const availabilityController = {
   setAvailability,
   getAvailability,
@@ -108,4 +114,5 @@ export const availabilityController = {
   getMyAvailability,
   getAvailabilityByLawyerId,
   adminSetAvailability,
+  syncAvailabilityWithVisibility,
 };

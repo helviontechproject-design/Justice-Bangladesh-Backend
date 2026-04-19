@@ -39,6 +39,13 @@ export interface CallFeeSlot {
   fee: number;
 }
 
+export interface ExtensionPricing {
+  enabled: boolean;
+  per_minute_rate: number;
+  max_extension_minutes: number;
+  description?: string;
+}
+
 export interface contactInfo {
   contactNumber: string;
   lawyerNumber: string;
@@ -97,6 +104,7 @@ export interface ILawyerProfile {
   video_fees?: CallFeeSlot[];
   chamber_fee?: number;
   chamber_duration?: number;
+  extension_pricing?: ExtensionPricing;
   payoutMethod?: {
     type: 'Bank' | 'bKash' | 'Nagad';
     bankName?: string;

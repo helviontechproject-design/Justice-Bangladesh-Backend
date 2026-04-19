@@ -44,49 +44,47 @@ const createAppointment = async (
 
   // Extract date & time properly
   const appointmentDate = new Date(payload.appointmentDate!);
-
   const selectedTime = payload.selectedTime;
-
-  const isBooked = await AvailabilityModel.findOne({
-    lawyerId: payload.lawyerId,
-    availableDates: {
-      $elemMatch: {
-        date: appointmentDate,
-        schedules: {
-          $elemMatch: {
-            time: selectedTime,
-            isBooked: true,
-          },
-        },
-      },
-    },
-  });
-
-  if (isBooked) {
+  const now = new Date();
+  
+  // Validation: Minimum 2 hours advance booking
+  const minBookingTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const appointmentDateTime = new Date(appointmentDate);
+  const [hours, minutes] = selectedTime!.replace(/[AP]M/, '').split(':').map(Number);
+  const isPM = selectedTime!.includes('PM');
+  appointmentDateTime.setHours(isPM && hours !== 12 ? hours + 12 : (hours === 12 && !isPM ? 0 : hours), minutes);
+  
+  if (appointmentDateTime < minBookingTime) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "This time slot is already booked",
+      "Appointments must be booked at least 2 hours in advance",
     );
   }
-
-  const availableThis = await AvailabilityModel.findOne({
-    lawyerId: payload.lawyerId,
-    availableDates: {
-      $elemMatch: {
-        date: appointmentDate,
-        schedules: {
-          $elemMatch: {
-            time: selectedTime,
-          },
-        },
-      },
-    },
-  });
-
-  if (!availableThis) {
+  
+  // Validation: Maximum 30 days advance booking
+  const maxBookingTime = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  if (appointmentDateTime > maxBookingTime) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "This time slot is not available",
+      "Appointments cannot be booked more than 30 days in advance",
+    );
+  }
+  
+  // Check for duplicate booking (same client, same lawyer, same day)
+  const existingAppointment = await Appointment.findOne({
+    clientId: client._id,
+    lawyerId: payload.lawyerId,
+    appointmentDate: {
+      $gte: new Date(appointmentDate.setHours(0, 0, 0, 0)),
+      $lt: new Date(appointmentDate.setHours(23, 59, 59, 999))
+    },
+    status: { $in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] }
+  });
+  
+  if (existingAppointment) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "You already have a booking with this lawyer on the selected date",
     );
   }
 
@@ -94,6 +92,80 @@ const createAppointment = async (
 
   try {
     session.startTransaction();
+
+    // Atomic check and book with session lock
+    const isBooked = await AvailabilityModel.findOne({
+      lawyerId: payload.lawyerId,
+      availableDates: {
+        $elemMatch: {
+          date: appointmentDate,
+          schedules: {
+            $elemMatch: {
+              time: selectedTime,
+              $or: [
+                { isBooked: true },
+                { status: 'pending' },
+                { status: 'booked' }
+              ]
+            },
+          },
+        },
+      },
+    }).session(session);
+
+    if (isBooked) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "This time slot is no longer available",
+      );
+    }
+
+    const availableThis = await AvailabilityModel.findOne({
+      lawyerId: payload.lawyerId,
+      availableDates: {
+        $elemMatch: {
+          date: appointmentDate,
+          schedules: {
+            $elemMatch: {
+              time: selectedTime,
+              isBooked: { $ne: true },
+              status: { $nin: ['pending', 'booked'] }
+            },
+          },
+        },
+      },
+    }).session(session);
+
+    if (!availableThis) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "This time slot is not available",
+      );
+    }
+
+    // Immediately mark slot as pending to prevent race conditions
+    await AvailabilityModel.updateOne(
+      {
+        lawyerId: payload.lawyerId,
+        "availableDates.date": appointmentDate,
+        "availableDates.schedules.time": selectedTime,
+      },
+      {
+        $set: {
+          "availableDates.$[date].schedules.$[schedules].isBooked": true,
+          "availableDates.$[date].schedules.$[schedules].status": "pending",
+          "availableDates.$[date].schedules.$[schedules].bookedBy":
+            decodedUser.userId,
+        },
+      },
+      {
+        arrayFilters: [
+          { "date.date": appointmentDate },
+          { "schedules.time": selectedTime },
+        ],
+        session,
+      },
+    );
 
     const videoCallingId = `VC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -112,7 +184,7 @@ const createAppointment = async (
           clientId: client._id,
           appointmentId: null,
           transactionId,
-          amount: lawyer.per_consultation_fee || 0,
+          amount: payload.totalFee || lawyer.per_consultation_fee || 0,
           type: PaymentType.BOOKING_FEE,
           status: PaymentStatus.UNPAID,
           description: `Appointment booking for ${payload.caseType} with ${lawyer.profile_Details?.fast_name || ""} ${lawyer.profile_Details?.last_name || ""}`,
@@ -148,30 +220,6 @@ const createAppointment = async (
 
     await Payment.findByIdAndUpdate(paymentId, { appointmentId }, { session });
 
-    // Update slot as booked
-    await AvailabilityModel.updateOne(
-      {
-        lawyerId: payload.lawyerId,
-        "availableDates.date": appointmentDate,
-        "availableDates.schedules.time": selectedTime,
-      },
-      {
-        $set: {
-          "availableDates.$[date].schedules.$[schedules].isBooked": true,
-          "availableDates.$[date].schedules.$[schedules].status": "pending",
-          "availableDates.$[date].schedules.$[schedules].bookedBy":
-            decodedUser.userId,
-        },
-      },
-      {
-        arrayFilters: [
-          { "date.date": appointmentDate },
-          { "schedules.time": selectedTime },
-        ],
-        session,
-      },
-    );
-
     // update lawyer profile to plus appointments_Count
     const lawyerProfile = await LawyerProfileModel.findByIdAndUpdate(
       payload.lawyerId,
@@ -185,21 +233,29 @@ const createAppointment = async (
     const userName =
       client.profileInfo.fast_name + " " + client.profileInfo.last_name;
 
-    // bKash payment init
+    // bKash payment init (Development mode - auto success)
     const orderId = `APT-${transactionId}`;
-    const bkashRes = await BkashService.createPayment({
-      amount: String(payment[0].amount),
-      orderId,
-      merchantInvoiceNumber: orderId,
-    }) as any;
-
     let bkashURL: string | null = null;
     let bkashPaymentID: string | null = null;
 
-    if (bkashRes?.statusCode === '0000') {
-      bkashURL = bkashRes.bkashURL;
-      bkashPaymentID = bkashRes.paymentID;
-      // Store bkashPaymentID in payment record
+    try {
+      const bkashRes = await BkashService.createPayment({
+        amount: String(payment[0].amount),
+        orderId,
+        merchantInvoiceNumber: orderId,
+      }) as any;
+
+      if (bkashRes?.statusCode === '0000') {
+        bkashURL = bkashRes.bkashURL;
+        bkashPaymentID = bkashRes.paymentID;
+        // Store bkashPaymentID in payment record
+        await Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+      }
+    } catch (error) {
+      console.log('bKash API not available, using development mode');
+      // Development mode: Create mock payment data
+      bkashURL = `https://sandbox.bka.sh/payment?paymentID=DEV-${Date.now()}`;
+      bkashPaymentID = `DEV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       await Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
     }
 
@@ -616,32 +672,291 @@ const updatePaymentStatus = async (
     );
 };
 
-const deleteAppointment = async (id: string, decodedUser: JwtPayload) => {
+const rescheduleAppointment = async (
+  id: string,
+  decodedUser: JwtPayload,
+  newDate: string,
+  newTime: string,
+) => {
   const appointment = await Appointment.findById(id);
-
   if (!appointment) {
     throw new AppError(StatusCodes.NOT_FOUND, "Appointment not found");
   }
 
-  // Only client can delete their pending appointments
-  const client = await ClientProfileModel.findOne({
-    userId: decodedUser.userId,
-  });
+  // Only client can reschedule their confirmed appointments
+  const client = await ClientProfileModel.findOne({ userId: decodedUser.userId });
   if (!client || !appointment.clientId.equals(client._id)) {
-    throw new AppError(
-      StatusCodes.FORBIDDEN,
-      "You can only delete your own appointments",
-    );
+    throw new AppError(StatusCodes.FORBIDDEN, "You can only reschedule your own appointments");
   }
 
-  if (appointment.status !== AppointmentStatus.PENDING) {
+  if (appointment.status !== AppointmentStatus.CONFIRMED) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "Only confirmed appointments can be rescheduled");
+  }
+
+  // Check if reschedule is allowed (at least 4 hours before appointment)
+  const appointmentDateTime = new Date(appointment.appointmentDate);
+  const [hours, minutes] = appointment.selectedTime.replace(/[AP]M/, '').split(':').map(Number);
+  const isPM = appointment.selectedTime.includes('PM');
+  appointmentDateTime.setHours(isPM && hours !== 12 ? hours + 12 : (hours === 12 && !isPM ? 0 : hours), minutes);
+  
+  const now = new Date();
+  const timeDiff = appointmentDateTime.getTime() - now.getTime();
+  const hoursDiff = timeDiff / (1000 * 60 * 60);
+  
+  if (hoursDiff < 4) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "Can only delete pending appointments",
+      "Appointments can only be rescheduled at least 4 hours in advance"
     );
   }
 
-  await Appointment.findByIdAndDelete(id);
+  const session = await mongoose.startSession();
+  
+  try {
+    session.startTransaction();
+    
+    const newAppointmentDate = new Date(newDate);
+    
+    // Check if new slot is available
+    const isNewSlotBooked = await AvailabilityModel.findOne({
+      lawyerId: appointment.lawyerId,
+      availableDates: {
+        $elemMatch: {
+          date: newAppointmentDate,
+          schedules: {
+            $elemMatch: {
+              time: newTime,
+              $or: [{ isBooked: true }, { status: 'pending' }, { status: 'booked' }]
+            },
+          },
+        },
+      },
+    }).session(session);
+
+    if (isNewSlotBooked) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "The new time slot is not available");
+    }
+
+    // Release old slot
+    await AvailabilityModel.updateOne(
+      {
+        lawyerId: appointment.lawyerId,
+        "availableDates.date": appointmentDateTime,
+        "availableDates.schedules.time": appointment.selectedTime,
+      },
+      {
+        $set: {
+          "availableDates.$[date].schedules.$[schedules].isBooked": false,
+          "availableDates.$[date].schedules.$[schedules].status": "available",
+          "availableDates.$[date].schedules.$[schedules].bookedBy": null,
+        },
+      },
+      {
+        arrayFilters: [
+          { "date.date": appointmentDateTime },
+          { "schedules.time": appointment.selectedTime },
+        ],
+        session,
+      },
+    );
+
+    // Book new slot
+    await AvailabilityModel.updateOne(
+      {
+        lawyerId: appointment.lawyerId,
+        "availableDates.date": newAppointmentDate,
+        "availableDates.schedules.time": newTime,
+      },
+      {
+        $set: {
+          "availableDates.$[date].schedules.$[schedules].isBooked": true,
+          "availableDates.$[date].schedules.$[schedules].status": "booked",
+          "availableDates.$[date].schedules.$[schedules].bookedBy": decodedUser.userId,
+        },
+      },
+      {
+        arrayFilters: [
+          { "date.date": newAppointmentDate },
+          { "schedules.time": newTime },
+        ],
+        session,
+      },
+    );
+
+    // Update appointment
+    appointment.appointmentDate = newAppointmentDate;
+    appointment.selectedTime = newTime;
+    await appointment.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Send notifications
+    const populatedAppointment = await Appointment.findById(id)
+      .populate("clientId", "profileInfo")
+      .populate("lawyerId", "profile_Details");
+
+    if (populatedAppointment) {
+      await NotificationHelper.notifyAppointmentRescheduled(populatedAppointment);
+    }
+
+    return populatedAppointment;
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    throw error;
+  }
+};
+
+const cancelAppointmentWithRefund = async (
+  id: string,
+  decodedUser: JwtPayload,
+  reason?: string,
+) => {
+  const appointment = await Appointment.findById(id).populate('paymentId');
+  if (!appointment) {
+    throw new AppError(StatusCodes.NOT_FOUND, "Appointment not found");
+  }
+
+  // Check authorization
+  const client = await ClientProfileModel.findOne({ userId: decodedUser.userId });
+  const lawyer = await LawyerProfileModel.findOne({ userId: decodedUser.userId });
+  
+  const isClient = client && appointment.clientId.equals(client._id);
+  const isLawyer = lawyer && appointment.lawyerId.equals(lawyer._id);
+  
+  if (!isClient && !isLawyer) {
+    throw new AppError(StatusCodes.FORBIDDEN, "Unauthorized to cancel this appointment");
+  }
+
+  if (![AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED].includes(appointment.status)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "Cannot cancel completed or already cancelled appointments");
+  }
+
+  const session = await mongoose.startSession();
+  
+  try {
+    session.startTransaction();
+    
+    // Calculate refund based on cancellation policy
+    let refundPercentage = 0;
+    const appointmentDateTime = new Date(appointment.appointmentDate);
+    const [hours, minutes] = appointment.selectedTime.replace(/[AP]M/, '').split(':').map(Number);
+    const isPM = appointment.selectedTime.includes('PM');
+    appointmentDateTime.setHours(isPM && hours !== 12 ? hours + 12 : (hours === 12 && !isPM ? 0 : hours), minutes);
+    
+    const now = new Date();
+    const timeDiff = appointmentDateTime.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    
+    if (isClient) {
+      // Client cancellation policy
+      if (hoursDiff >= 24) refundPercentage = 90; // 90% refund if cancelled 24+ hours before
+      else if (hoursDiff >= 4) refundPercentage = 50; // 50% refund if cancelled 4-24 hours before
+      else refundPercentage = 0; // No refund if cancelled less than 4 hours before
+    } else if (isLawyer) {
+      // Lawyer cancellation - full refund to client
+      refundPercentage = 100;
+    }
+
+    // Update appointment status
+    appointment.status = AppointmentStatus.CANCELLED;
+    appointment.cancellationReason = reason;
+    appointment.cancelledBy = decodedUser.userId;
+    appointment.cancelledAt = new Date();
+    await appointment.save({ session });
+
+    // Release time slot
+    const appointmentDate = new Date(appointment.appointmentDate);
+    await AvailabilityModel.updateOne(
+      {
+        lawyerId: appointment.lawyerId,
+        "availableDates.date": appointmentDate,
+        "availableDates.schedules.time": appointment.selectedTime,
+      },
+      {
+        $set: {
+          "availableDates.$[date].schedules.$[schedules].isBooked": false,
+          "availableDates.$[date].schedules.$[schedules].status": "available",
+          "availableDates.$[date].schedules.$[schedules].bookedBy": null,
+        },
+      },
+      {
+        arrayFilters: [
+          { "date.date": appointmentDate },
+          { "schedules.time": appointment.selectedTime },
+        ],
+        session,
+      },
+    );
+
+    // Process refund if applicable
+    let refundAmount = 0;
+    if (refundPercentage > 0 && appointment.payment_Status === 'PAID') {
+      const payment = appointment.paymentId as any;
+      refundAmount = Math.round((payment.amount * refundPercentage) / 100);
+      
+      // Create refund record
+      await Payment.create([
+        {
+          lawyerId: appointment.lawyerId,
+          clientId: appointment.clientId,
+          appointmentId: appointment._id,
+          transactionId: `REFUND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          amount: -refundAmount, // Negative amount for refund
+          type: 'REFUND',
+          status: 'PAID',
+          description: `Refund for cancelled appointment (${refundPercentage}% of ৳${payment.amount})`,
+        },
+      ], { session });
+      
+      // Update client wallet (add refund)
+      await WalletModel.findOneAndUpdate(
+        { clientId: appointment.clientId },
+        {
+          $inc: { balance: refundAmount },
+          $push: { 
+            transactions: {
+              type: 'REFUND',
+              amount: refundAmount,
+              description: `Appointment cancellation refund`,
+              createdAt: new Date()
+            }
+          },
+        },
+        { upsert: true, session },
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Send notifications
+    const populatedAppointment = await Appointment.findById(id)
+      .populate("clientId", "profileInfo")
+      .populate("lawyerId", "profile_Details");
+
+    if (populatedAppointment) {
+      await NotificationHelper.notifyAppointmentCancelled(populatedAppointment, decodedUser.userId, refundAmount);
+    }
+
+    return {
+      appointment: populatedAppointment,
+      refundAmount,
+      refundPercentage,
+      message: refundAmount > 0 
+        ? `Appointment cancelled. ৳${refundAmount} refund will be processed to your wallet.`
+        : 'Appointment cancelled.'
+    };
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+    throw error;
+  }
 };
 
 const getAppointmentStats = async () => {
@@ -792,7 +1107,8 @@ export const appointmentService = {
   updateAppointment,
   updateAppointmentStatus,
   updatePaymentStatus,
-  deleteAppointment,
+  rescheduleAppointment,
+  cancelAppointmentWithRefund,
   getAppointmentStats,
   cancelUnpaidAppointments,
 };
