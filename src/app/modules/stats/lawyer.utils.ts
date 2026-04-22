@@ -53,35 +53,36 @@ export const getLawyertodaysAnalytics = async (lawyerId: string) => {
 export const getLawyertodaysSchedule = async (lawyerId: string) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
 
   const todaysSchedule = await Appointment.find({
     lawyerId: new Types.ObjectId(lawyerId),
-    appointmentDate: { $gte: today, $lt: tomorrow },
+    appointmentDate: { $gte: today },
     status: AppointmentStatus.CONFIRMED,
   })
-    .populate('clientId', 'profileInfo email')
-    .sort({ selectedTime: 1 })
+    .populate({
+      path: 'clientId',
+      select: 'profileInfo.fast_name profileInfo.last_name profileInfo.photo userId',
+      populate: { path: 'userId', select: 'profilePhoto' },
+    })
+    .sort({ appointmentDate: 1, selectedTime: 1 })
     .lean();
   
-  console.log(todaysSchedule);
-  
-
   return todaysSchedule;
 };
 
 export const getLawyerBookingRequests = async (lawyerId: string) => {
-  const now = new Date();
-
   const bookingRequests = await Appointment.find({
     lawyerId: new Types.ObjectId(lawyerId),
     status: AppointmentStatus.PENDING,
-    appointmentDate: { $gte: now }, // Only future appointments (not expired)
+    payment_Status: 'PAID',
   })
-    .populate('clientId', 'profileInfo email')
-    .sort({ createdAt: -1 }) // Latest requests first
-    .lean()
+    .populate({
+      path: 'clientId',
+      select: 'profileInfo.fast_name profileInfo.last_name profileInfo.photo userId',
+      populate: { path: 'userId', select: 'profilePhoto' },
+    })
+    .sort({ createdAt: -1 })
+    .lean();
 
   return bookingRequests;
 };

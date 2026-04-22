@@ -36,4 +36,10 @@ const storage = new multer_storage_cloudinary_1.CloudinaryStorage({
         return Object.assign({ folder: 'uploads', public_id: uniqueFileName }, { resource_type: 'auto' });
     }),
 });
-exports.multerUpload = (0, multer_1.default)({ storage });
+exports.multerUpload = (0, multer_1.default)({
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5 MB max file size
+        files: 5, // max 5 files per request
+    },
+});

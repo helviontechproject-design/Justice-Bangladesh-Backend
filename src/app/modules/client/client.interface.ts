@@ -9,6 +9,7 @@ export interface profileDetails {
   last_name: string;
   email: string;
   phone: string;
+  photo: string;
   paypal_Email: string;
   street_address: string;
   district: string;

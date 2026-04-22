@@ -46,10 +46,15 @@ const requestPayout = async (lawyerUserId: string, payload: any) => {
     );
   }
 
-  // Calculate platform fee and net amount
-  const platformFee = await settingsService.calculatePlatformFee(
-    payload.amount,
-  );
+  // Calculate platform fee — use lawyer's individual fee if set, else global settings
+  let platformFeePercent: number;
+  if (lawyerProfile.platform_fee_percentage !== null && lawyerProfile.platform_fee_percentage !== undefined) {
+    platformFeePercent = lawyerProfile.platform_fee_percentage;
+  } else {
+    const settings = await settingsService.getPlatformSettings();
+    platformFeePercent = settings.platformFee.enabled ? settings.platformFee.percentage : 0;
+  }
+  const platformFee = Math.round((payload.amount * platformFeePercent) / 100);
   const netAmount = payload.amount - platformFee;
 
   // Create payout request with fee breakdown
@@ -172,14 +177,17 @@ const failPayout = async (id: string, failureReason: string) => {
   return payout;
 };
 
-const cancelPayout = async (id: string, lawyerId: string) => {
+const cancelPayout = async (id: string, lawyerUserId: string, reason?: string) => {
   const payout = await Payout.findById(id);
 
   if (!payout) {
     throw new AppError(httpStatus.NOT_FOUND, "Payout not found");
   }
 
-  if (payout.lawyerId.toString() !== lawyerId) {
+  const lawyerProfile = await LawyerProfileModel.findOne({ userId: lawyerUserId });
+  if (!lawyerProfile) throw new AppError(httpStatus.NOT_FOUND, 'Lawyer not found');
+
+  if (payout.lawyerId.toString() !== lawyerProfile._id.toString()) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       "You can only cancel your own payouts",
@@ -202,6 +210,7 @@ const cancelPayout = async (id: string, lawyerId: string) => {
 
   // Update payout status
   payout.status = PayoutStatus.CANCELLED;
+  if (reason) payout.failureReason = reason;
   await payout.save();
 
   // Return FULL amount to balance from pending (refund platform fee too)
@@ -231,7 +240,11 @@ const getAllPayouts = async (query: Record<string, string>) => {
     "lawyerId",
   ];
   const payoutQuery = new QueryBuilder(
-    Payout.find().populate("lawyerId", "name email phoneNumber avatarUrl"),
+    Payout.find().populate({
+      path: 'lawyerId',
+      select: 'profile_Details userId',
+      populate: { path: 'userId', select: 'profilePhoto phoneNo' },
+    }),
     query,
   )
     .search(payoutSearchableFields)

@@ -89,9 +89,9 @@ const getLawyerDashboardStats = async (
   ]);
 
   return {
-    Analytics,
+    todaysAnalytics: Analytics,
     todaysSchedule,
-    BookingRequests,
+    bookingRequests: BookingRequests,
     appointments,
     reviews,
     trends: {

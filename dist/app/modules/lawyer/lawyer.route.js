@@ -22,6 +22,7 @@ router.patch('/admin/:id/ban', (0, checkAuth_1.checkAuth)(user_interface_1.ERole
 router.patch('/admin/:id/verify', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), lawyer_controller_1.lawyerController.adminVerifyLawyer);
 router.delete('/admin/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), lawyer_controller_1.lawyerController.adminDeleteLawyer);
 router.put('/admin/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), multer_config_1.multerUpload.single('profilePhoto'), lawyer_controller_1.lawyerController.adminUpdateLawyer);
+router.patch('/admin/:id/platform-fee', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), lawyer_controller_1.lawyerController.adminSetPlatformFee);
 // ===== LAWYER SELF UPDATE =====
 router.patch('/update-lawyer/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.LAWYER, user_interface_1.ERole.SUPER_ADMIN), multer_config_1.multerUpload.single('bar_council_certificate'), (0, validateRequest_1.validateRequest)(lawyer_validation_1.updateLawyerSchema), lawyer_controller_1.lawyerController.updateLawyer);
 // ===== PUBLIC dynamic (must be last) =====

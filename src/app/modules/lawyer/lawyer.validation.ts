@@ -76,6 +76,34 @@ export const updateLawyerSchema = z.object({
   })).optional(),
   services: z.array(z.string()).optional(),
   categories:  z.array(z.string()).optional(),
+  call_fees: z.array(z.object({
+    minutes: z.number().optional(),
+    fee: z.number().optional(),
+  })).optional(),
+  video_fees: z.array(z.object({
+    minutes: z.number().optional(),
+    fee: z.number().optional(),
+  })).optional(),
+  chamber_fee: z.union([z.number(), z.string().transform(v => parseInt(v) || 0)]).optional(),
+  chamber_duration: z.union([z.number(), z.string().transform(v => parseInt(v) || 15)]).optional(),
+  extension_pricing: z.object({
+    enabled: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
+    per_minute_rate: z.union([z.number(), z.string().transform(v => parseInt(v) || 0)]).optional(),
+    audio_per_minute_rate: z.union([z.number(), z.string().transform(v => parseInt(v) || 0)]).optional(),
+    video_per_minute_rate: z.union([z.number(), z.string().transform(v => parseInt(v) || 0)]).optional(),
+    chamber_per_minute_rate: z.union([z.number(), z.string().transform(v => parseInt(v) || 0)]).optional(),
+    max_extension_minutes: z.union([z.number(), z.string().transform(v => parseInt(v) || 30)]).optional(),
+    description: z.string().optional(),
+  }).optional(),
+  payoutMethod: z.object({
+    type: z.enum(['Bank', 'bKash', 'Nagad']),
+    bankName: z.string().optional(),
+    branchName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    accountHolderName: z.string().optional(),
+    bkashNumber: z.string().optional(),
+    nagadNumber: z.string().optional(),
+  }).optional(),
 }).partial();
 
 // Type export

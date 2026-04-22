@@ -24,6 +24,11 @@ const getMe = async (decodedUser: JwtPayload) => {
     );
   }
 
+  const lawyerDoc = me.lawyer as any;
+  if (lawyerDoc) {
+    // debug removed
+  }
+
   return me;
 };
 

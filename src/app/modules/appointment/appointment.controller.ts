@@ -7,7 +7,7 @@ import { JwtPayload } from "jsonwebtoken";
 
 const createAppointment = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const files = req.files as {
+    const files = (req.files ?? {}) as {
       [fieldname: string]: Express.Multer.File[];
     };
     const decodedUser = req.user;
@@ -253,6 +253,40 @@ const createAppointmentDev = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Dev: confirm payment without real gateway
+const confirmPaymentDev = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { Appointment } = await import('./appointment.model');
+  const { Payment } = await import('../payment/payment.model');
+  const { WalletModel } = await import('../wallet/wallet.model');
+  const { AppointmentPaymentStatus, AppointmentStatus } = await import('./appointment.interface');
+  const { PaymentStatus } = await import('../payment/payment.interface');
+
+  const appointment = await Appointment.findByIdAndUpdate(
+    id,
+    { payment_Status: AppointmentPaymentStatus.PAID, status: AppointmentStatus.PENDING },
+    { new: true }
+  );
+  if (!appointment) throw new Error('Appointment not found');
+
+  if (appointment.paymentId) {
+    const payment = await Payment.findByIdAndUpdate(
+      appointment.paymentId,
+      { status: PaymentStatus.PAID },
+      { new: true }
+    );
+    if (payment) {
+      await WalletModel.findOneAndUpdate(
+        { lawyerId: appointment.lawyerId },
+        { $inc: { balance: payment.amount, totalEarned: payment.amount }, $push: { transactions: payment._id } },
+        { upsert: true }
+      );
+    }
+  }
+
+  sendResponse(res, { success: true, statusCode: 200, message: 'Payment confirmed', data: appointment });
+});
+
 // Dev: get all recent appointments without auth
 const getMyAppointmentsDev = catchAsync(async (req: Request, res: Response) => {
   const { Appointment } = await import('./appointment.model');
@@ -273,6 +307,7 @@ const getMyAppointmentsDev = catchAsync(async (req: Request, res: Response) => {
 export const appointmentController = {
   createAppointment,
   createAppointmentDev,
+  confirmPaymentDev,
   getAllAppointments,
   getMyAppointments,
   getMyAppointmentsDev,

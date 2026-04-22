@@ -42,6 +42,9 @@ export interface CallFeeSlot {
 export interface ExtensionPricing {
   enabled: boolean;
   per_minute_rate: number;
+  audio_per_minute_rate: number;
+  video_per_minute_rate: number;
+  chamber_per_minute_rate: number;
   max_extension_minutes: number;
   description?: string;
 }
@@ -114,6 +117,7 @@ export interface ILawyerProfile {
     bkashNumber?: string;
     nagadNumber?: string;
   };
+  platform_fee_percentage?: number;
   withdrawals?: Types.ObjectId[];
   createdAt?: Date;
   updatedAt?: Date;

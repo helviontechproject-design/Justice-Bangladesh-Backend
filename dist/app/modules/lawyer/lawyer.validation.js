@@ -73,4 +73,32 @@ exports.updateLawyerSchema = zod_1.z.object({
     })).optional(),
     services: zod_1.z.array(zod_1.z.string()).optional(),
     categories: zod_1.z.array(zod_1.z.string()).optional(),
+    call_fees: zod_1.z.array(zod_1.z.object({
+        minutes: zod_1.z.number().optional(),
+        fee: zod_1.z.number().optional(),
+    })).optional(),
+    video_fees: zod_1.z.array(zod_1.z.object({
+        minutes: zod_1.z.number().optional(),
+        fee: zod_1.z.number().optional(),
+    })).optional(),
+    chamber_fee: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 0)]).optional(),
+    chamber_duration: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 15)]).optional(),
+    extension_pricing: zod_1.z.object({
+        enabled: zod_1.z.union([zod_1.z.boolean(), zod_1.z.string().transform(v => v === 'true')]).optional(),
+        per_minute_rate: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 0)]).optional(),
+        audio_per_minute_rate: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 0)]).optional(),
+        video_per_minute_rate: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 0)]).optional(),
+        chamber_per_minute_rate: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 0)]).optional(),
+        max_extension_minutes: zod_1.z.union([zod_1.z.number(), zod_1.z.string().transform(v => parseInt(v) || 30)]).optional(),
+        description: zod_1.z.string().optional(),
+    }).optional(),
+    payoutMethod: zod_1.z.object({
+        type: zod_1.z.enum(['Bank', 'bKash', 'Nagad']),
+        bankName: zod_1.z.string().optional(),
+        branchName: zod_1.z.string().optional(),
+        accountNumber: zod_1.z.string().optional(),
+        accountHolderName: zod_1.z.string().optional(),
+        bkashNumber: zod_1.z.string().optional(),
+        nagadNumber: zod_1.z.string().optional(),
+    }).optional(),
 }).partial();

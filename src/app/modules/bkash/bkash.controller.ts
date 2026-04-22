@@ -65,6 +65,11 @@ const executePayment = catchAsync(async (req: Request, res: Response) => {
 
   if (!paymentID) throw new AppError(StatusCodes.BAD_REQUEST, 'paymentID is required');
 
+  // Sanitize paymentID — only allow alphanumeric and hyphens
+  if (!/^[a-zA-Z0-9\-_]+$/.test(paymentID)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid paymentID format');
+  }
+
   let executeRes: any;
   
   try {
@@ -148,6 +153,14 @@ const executePayment = catchAsync(async (req: Request, res: Response) => {
 // Query payment status
 const queryPayment = catchAsync(async (req: Request, res: Response) => {
   const { paymentID } = req.params;
+
+  if (!paymentID) throw new AppError(StatusCodes.BAD_REQUEST, 'paymentID is required');
+
+  // Sanitize paymentID — only allow alphanumeric, hyphens and underscores
+  if (!/^[a-zA-Z0-9\-_]+$/.test(paymentID)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid paymentID format');
+  }
+
   const result = await BkashService.queryPayment(paymentID);
   sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: 'Payment status', data: result });
 });

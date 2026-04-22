@@ -59,6 +59,12 @@ const envVariables = () => {
         'FIREBASE_CLIENT_ID',
         'AGORA_APP_ID',
         'AGORA_APP_CERTIFICATE',
+        'BKASH_BASE_URL',
+        'BKASH_USERNAME',
+        'BKASH_PASSWORD',
+        'BKASH_APP_KEY',
+        'BKASH_APP_SECRET',
+        'BKASH_CALLBACK_URL',
     ];
     requiredEnvVariables.forEach(key => {
         if (!process.env[key]) {
@@ -126,6 +132,14 @@ const envVariables = () => {
         },
         AGORA_APP_ID: process.env.AGORA_APP_ID,
         AGORA_APP_CERTIFICATE: process.env.AGORA_APP_CERTIFICATE,
+        BKASH: {
+            BASE_URL: process.env.BKASH_BASE_URL,
+            USERNAME: process.env.BKASH_USERNAME,
+            PASSWORD: process.env.BKASH_PASSWORD,
+            APP_KEY: process.env.BKASH_APP_KEY,
+            APP_SECRET: process.env.BKASH_APP_SECRET,
+            CALLBACK_URL: process.env.BKASH_CALLBACK_URL,
+        },
     };
 };
 exports.envVars = envVariables();

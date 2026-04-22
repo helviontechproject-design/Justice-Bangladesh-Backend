@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.router = void 0;
 const express_1 = require("express");
+const multer_config_1 = require("../config/multer.config");
 const user_route_1 = require("../modules/user/user.route");
 const auth_route_1 = require("../modules/auth/auth.route");
 const availability_route_1 = require("../modules/availability/availability.route");
@@ -145,6 +146,12 @@ const moduleRoutes = [
         route: instantConsultancy_route_1.instantConsultancyRoute
     }
 ];
+// Generic image upload endpoint
+exports.router.post('/upload', multer_config_1.multerUpload.single('image'), (req, res) => {
+    if (!req.file)
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+    res.json({ success: true, data: { url: req.file.path } });
+});
 moduleRoutes.forEach(route => {
     exports.router.use(route.path, route.route);
 });

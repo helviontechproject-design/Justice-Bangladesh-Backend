@@ -17,8 +17,6 @@ const availability_model_1 = require("./availability.model");
 const mongoose_1 = require("mongoose");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const http_status_codes_1 = require("http-status-codes");
-const QueryBuilder_1 = require("../../utils/QueryBuilder");
-const constants_1 = require("../../constants");
 const lawyer_model_1 = require("../lawyer/lawyer.model");
 const setAvailability = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
@@ -50,6 +48,17 @@ const setAvailability = (decodedUser, payload) => __awaiter(void 0, void 0, void
         existingAvailability.isActive =
             (_a = payload.isActive) !== null && _a !== void 0 ? _a : existingAvailability.isActive;
         yield existingAvailability.save();
+        // Auto-enable visibility settings when availability is saved
+        const visibilityUpdate = {};
+        if (payload.bookingType === 'Video Call')
+            visibilityUpdate.videoConsult = true;
+        else if (payload.bookingType === 'Audio Call')
+            visibilityUpdate.audioCall = true;
+        else if (payload.bookingType === 'In Person')
+            visibilityUpdate.inPerson = true;
+        if (Object.keys(visibilityUpdate).length > 0) {
+            yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+        }
         return {
             success: true,
             message: `Availability for ${payload.month} updated successfully`,
@@ -68,6 +77,17 @@ const setAvailability = (decodedUser, payload) => __awaiter(void 0, void 0, void
         yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, {
             $push: { availability: newAvailability._id },
         }, { new: true });
+        // Auto-enable visibility settings when availability is created
+        const visibilityUpdate = {};
+        if (payload.bookingType === 'Video Call')
+            visibilityUpdate.videoConsult = true;
+        else if (payload.bookingType === 'Audio Call')
+            visibilityUpdate.audioCall = true;
+        else if (payload.bookingType === 'In Person')
+            visibilityUpdate.inPerson = true;
+        if (Object.keys(visibilityUpdate).length > 0) {
+            yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+        }
         return {
             success: true,
             message: `Availability for ${payload.month} created successfully`,
@@ -77,20 +97,33 @@ const setAvailability = (decodedUser, payload) => __awaiter(void 0, void 0, void
 });
 exports.setAvailability = setAvailability;
 const getAvailability = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    const availabilities = availability_model_1.AvailabilityModel.find();
-    const queryBuilder = new QueryBuilder_1.QueryBuilder(availabilities, query);
-    const allAvailabilities = queryBuilder
-        .search(constants_1.availabilitiesSearchableFields)
-        .filter()
-        .paginate();
-    const [data, meta] = yield Promise.all([
-        allAvailabilities.build().exec(),
-        queryBuilder.getMeta(),
-    ]);
-    return {
-        data,
-        meta,
-    };
+    // Build base filter with proper ObjectId conversion
+    const filter = {};
+    if (query.lawyerId) {
+        filter.lawyerId = new mongoose_1.Types.ObjectId(query.lawyerId);
+    }
+    // Fetch all matching records without pagination limit
+    const data = yield availability_model_1.AvailabilityModel.find(filter).sort({ month: 1 }).lean();
+    // Filter by lawyer visibility settings
+    if (query.lawyerId && data.length > 0) {
+        const lawyer = yield lawyer_model_1.LawyerProfileModel.findById(query.lawyerId).lean();
+        if (lawyer) {
+            const filteredData = data.filter((availability) => {
+                if (!availability.isActive)
+                    return false;
+                const bt = availability.bookingType;
+                if (bt === 'Video Call' && !lawyer.videoConsult)
+                    return false;
+                if (bt === 'Audio Call' && !lawyer.audioCall)
+                    return false;
+                if (bt === 'In Person' && !lawyer.inPerson)
+                    return false;
+                return true;
+            });
+            return { data: filteredData, meta: { total: filteredData.length } };
+        }
+    }
+    return { data, meta: { total: data.length } };
 });
 const getAvailabilityById = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const availability = yield availability_model_1.AvailabilityModel.findById(id).populate("lawyerId");
@@ -122,16 +155,10 @@ const getMyAvailability = (decodedUser, query) => __awaiter(void 0, void 0, void
     if (!lawyer) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.UNAUTHORIZED, "Unauthorized user");
     }
-    const availabilities = availability_model_1.AvailabilityModel.find({ lawyerId: lawyer._id });
-    const queryBuilder = new QueryBuilder_1.QueryBuilder(availabilities, query);
-    const allAvailabilities = queryBuilder.filter().paginate();
-    const [data, meta] = yield Promise.all([
-        allAvailabilities.build().exec(),
-        queryBuilder.getMeta(),
-    ]);
+    const availabilities = yield availability_model_1.AvailabilityModel.find({ lawyerId: lawyer._id }).sort({ month: 1 });
     return {
-        data,
-        meta,
+        data: availabilities,
+        meta: { total: availabilities.length },
     };
 });
 function getAvailabilityByLawyerId(lawyerId) {
@@ -155,11 +182,59 @@ function adminSetAvailability(payload) {
             if (isActive !== undefined)
                 existing.isActive = isActive;
             yield existing.save();
+            // Auto-enable visibility settings when availability is saved
+            const visibilityUpdate = {};
+            if (bookingType === 'Video Call')
+                visibilityUpdate.videoConsult = true;
+            else if (bookingType === 'Audio Call')
+                visibilityUpdate.audioCall = true;
+            else if (bookingType === 'In Person')
+                visibilityUpdate.inPerson = true;
+            if (Object.keys(visibilityUpdate).length > 0) {
+                yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+            }
             return existing;
         }
         const created = yield availability_model_1.AvailabilityModel.create({ lawyerId, bookingType, month, availableDates: availableDates || [], isActive: isActive !== null && isActive !== void 0 ? isActive : true });
         yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, { $addToSet: { availability: created._id } });
+        // Auto-enable visibility settings when availability is created
+        const visibilityUpdate = {};
+        if (bookingType === 'Video Call')
+            visibilityUpdate.videoConsult = true;
+        else if (bookingType === 'Audio Call')
+            visibilityUpdate.audioCall = true;
+        else if (bookingType === 'In Person')
+            visibilityUpdate.inPerson = true;
+        if (Object.keys(visibilityUpdate).length > 0) {
+            yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+        }
         return created;
+    });
+}
+function syncAvailabilityWithVisibility(lawyerId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const lawyer = yield lawyer_model_1.LawyerProfileModel.findById(lawyerId);
+        if (!lawyer) {
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Lawyer not found');
+        }
+        const availabilities = yield availability_model_1.AvailabilityModel.find({ lawyerId: new mongoose_1.Types.ObjectId(lawyerId) });
+        const visibilityUpdate = {};
+        // Check what consultation types have availability and auto-enable them
+        for (const availability of availabilities) {
+            if (availability.isActive && availability.availableDates && availability.availableDates.length > 0) {
+                if (availability.bookingType === 'Video Call')
+                    visibilityUpdate.videoConsult = true;
+                else if (availability.bookingType === 'Audio Call')
+                    visibilityUpdate.audioCall = true;
+                else if (availability.bookingType === 'In Person')
+                    visibilityUpdate.inPerson = true;
+            }
+        }
+        if (Object.keys(visibilityUpdate).length > 0) {
+            yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, { $set: visibilityUpdate });
+            return { message: 'Visibility settings synced with availability', updated: visibilityUpdate };
+        }
+        return { message: 'No sync needed', updated: {} };
     });
 }
 exports.availabilityService = {
@@ -170,4 +245,5 @@ exports.availabilityService = {
     getMyAvailability,
     getAvailabilityByLawyerId,
     adminSetAvailability,
+    syncAvailabilityWithVisibility,
 };

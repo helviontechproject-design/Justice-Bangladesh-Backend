@@ -13,7 +13,9 @@ const UserSchema = new mongoose_1.Schema({
         type: new mongoose_1.Schema({
             value: {
                 type: String,
+                unique: true,
                 sparse: true,
+                trim: true,
             },
             isVerified: {
                 type: Boolean,

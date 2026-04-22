@@ -77,6 +77,11 @@ const adminSetAvailability = (0, catchAsync_1.catchAsync)((req, res) => __awaite
     const data = yield availability_service_1.availabilityService.adminSetAvailability(req.body);
     (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: 'Availability saved', data });
 }));
+const syncAvailabilityWithVisibility = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { lawyerId } = req.params;
+    const data = yield availability_service_1.availabilityService.syncAvailabilityWithVisibility(lawyerId);
+    (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: data.message, data: data.updated });
+}));
 exports.availabilityController = {
     setAvailability,
     getAvailability,
@@ -85,4 +90,5 @@ exports.availabilityController = {
     getMyAvailability,
     getAvailabilityByLawyerId,
     adminSetAvailability,
+    syncAvailabilityWithVisibility,
 };

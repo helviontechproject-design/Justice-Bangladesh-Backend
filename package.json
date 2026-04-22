@@ -22,6 +22,7 @@
     "agora-token": "^2.0.5",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
+    "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -44,10 +45,21 @@
     "twilio": "^5.10.4",
     "zod": "^4.0.14"
   },
+  "overrides": {
+    "cloudinary": "^2.9.0",
+    "@tootallnate/once": "^3.0.1",
+    "http-proxy-agent": "^9.0.0",
+    "retry-request": "^8.0.2",
+    "teeny-request": "latest",
+    "@google-cloud/storage": "latest",
+    "@google-cloud/firestore": "latest",
+    "google-gax": "latest"
+  },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@types/axios": "^0.9.36",
     "@types/bcryptjs": "^2.4.6",
+    "@types/connect-redis": "^0.0.23",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",

@@ -43,6 +43,15 @@ const ChamberSchema = new mongoose_1.Schema({
     name: { type: String },
     location: { type: String },
 }, { _id: false });
+const ExtensionPricingSchema = new mongoose_1.Schema({
+    enabled: { type: Boolean, default: false },
+    per_minute_rate: { type: Number, default: 0 },
+    audio_per_minute_rate: { type: Number, default: 0 },
+    video_per_minute_rate: { type: Number, default: 0 },
+    chamber_per_minute_rate: { type: Number, default: 0 },
+    max_extension_minutes: { type: Number, default: 30 },
+    description: { type: String },
+}, { _id: false });
 const PayoutMethodSchema = new mongoose_1.Schema({
     type: { type: String, enum: ['Bank', 'bKash', 'Nagad'], default: 'bKash' },
     bankName: { type: String },
@@ -93,8 +102,10 @@ const LawyerProfileSchema = new mongoose_1.Schema({
     video_fees: [{ minutes: { type: Number }, fee: { type: Number }, _id: false }],
     chamber_fee: { type: Number, default: 0 },
     chamber_duration: { type: Number, default: 15 },
+    extension_pricing: { type: ExtensionPricingSchema, default: { enabled: false, per_minute_rate: 0, max_extension_minutes: 30 } },
     payoutMethod: { type: PayoutMethodSchema, default: null },
     withdrawals: [{ type: mongoose_1.Types.ObjectId, ref: 'Withdrawal' }],
+    platform_fee_percentage: { type: Number, default: null },
 }, { timestamps: true });
 // ===== Model =====
 exports.LawyerProfileModel = (0, mongoose_1.model)('LawyerProfile', LawyerProfileSchema);

@@ -61,9 +61,9 @@ const getLawyerDashboardStats = (lawyerId, query) => __awaiter(void 0, void 0, v
         (0, lawyer_utils_1.getLawyerRecentPayments)(lawyerId, page, limit),
     ]);
     return {
-        Analytics,
+        todaysAnalytics: Analytics,
         todaysSchedule,
-        BookingRequests,
+        bookingRequests: BookingRequests,
         appointments,
         reviews,
         trends: {

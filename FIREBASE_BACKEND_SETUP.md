@@ -10,11 +10,11 @@ Firebase সম্পূর্ণভাবে আপনার বেকএন্
 ### 2. **.env Configuration** ✓
 নিম্নলিখিত Firebase variables যোগ করা হয়েছে:
 ```
-FIREBASE_PROJECT_ID=justicebangladesh-66a56
-FIREBASE_PRIVATE_KEY_ID=11a81b3f007bb877c782dfe7279e7eed81c5428a
+FIREBASE_PROJECT_ID=<your-firebase-project-id>
+FIREBASE_PRIVATE_KEY_ID=<your-firebase-private-key-id>
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----...
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@justicebangladesh-66a56.iam.gserviceaccount.com
-FIREBASE_CLIENT_ID=112780772331684447089
+FIREBASE_CLIENT_EMAIL=<your-firebase-client-email>
+FIREBASE_CLIENT_ID=<your-firebase-client-id>
 FIREBASE_AUTH_URI=https://accounts.google.com/o/oauth2/auth
 FIREBASE_TOKEN_URI=https://oauth2.googleapis.com/token
 ```

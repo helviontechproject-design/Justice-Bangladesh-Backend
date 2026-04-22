@@ -17,4 +17,6 @@ router.get('/admin/all', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER
 router.patch('/:id/process', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), payout_controller_1.payoutController.processPayout);
 // Marks a payout as failed (e.g., due to invalid bank details or processing errors)
 router.patch('/:id/fail', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), payout_controller_1.payoutController.failPayout);
+// Admin cancel payout with reason
+router.patch('/:id/admin-cancel', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), payout_controller_1.payoutController.adminCancelPayout);
 exports.payoutRoute = router;

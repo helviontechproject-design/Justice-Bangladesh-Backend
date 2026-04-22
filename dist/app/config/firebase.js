@@ -2,6 +2,7 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.messaging = exports.admin = void 0;
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
@@ -34,8 +35,8 @@ try {
         private_key: privateKey,
         client_email: process.env.FIREBASE_CLIENT_EMAIL,
         client_id: process.env.FIREBASE_CLIENT_ID,
-        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-        token_uri: 'https://oauth2.googleapis.com/token',
+        auth_uri: (_a = process.env.FIREBASE_AUTH_URI) !== null && _a !== void 0 ? _a : 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: (_b = process.env.FIREBASE_TOKEN_URI) !== null && _b !== void 0 ? _b : 'https://oauth2.googleapis.com/token',
     };
     firebase_admin_1.default.initializeApp({
         credential: firebase_admin_1.default.credential.cert(firebaseCredentials),

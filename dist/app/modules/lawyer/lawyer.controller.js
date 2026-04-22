@@ -50,6 +50,7 @@ const catchAsync_1 = require("../../utils/catchAsync");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_codes_1 = require("http-status-codes");
 const lawyer_service_1 = require("./lawyer.service");
+const lawyer_model_1 = require("./lawyer.model");
 const getPopularLawyers = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const lawyers = yield lawyer_service_1.lawyerServices.getPopularLawyers();
     (0, sendResponse_1.default)(res, {
@@ -170,7 +171,7 @@ const adminUpdateLawyer = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(v
     var _a;
     // Parse nested JSON strings from FormData
     const body = Object.assign({}, req.body);
-    const jsonFields = ['profile_Details', 'lawyerDetails', 'specialties', 'categories', 'call_fees', 'video_fees', 'educations'];
+    const jsonFields = ['profile_Details', 'lawyerDetails', 'specialties', 'categories', 'call_fees', 'video_fees', 'educations', 'qualifications', 'chambers', 'work_experience', 'court_districts', 'payoutMethod'];
     jsonFields.forEach((field) => {
         if (typeof body[field] === 'string') {
             try {
@@ -196,6 +197,14 @@ const adminUpdateLawyer = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(v
         data: result,
     });
 }));
+const adminSetPlatformFee = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { platform_fee_percentage } = req.body;
+    if (platform_fee_percentage === undefined || platform_fee_percentage < 0 || platform_fee_percentage > 100) {
+        return (0, sendResponse_1.default)(res, { success: false, statusCode: http_status_codes_1.StatusCodes.BAD_REQUEST, message: 'Invalid platform fee percentage (0-100)', data: null });
+    }
+    const result = yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(req.params.id, { platform_fee_percentage }, { new: true }).select('platform_fee_percentage profile_Details');
+    (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: 'Platform fee updated', data: result });
+}));
 exports.lawyerController = {
     getPopularLawyers,
     getAllLawyers,
@@ -210,4 +219,5 @@ exports.lawyerController = {
     adminVerifyLawyer,
     adminDeleteLawyer,
     adminUpdateLawyer,
+    adminSetPlatformFee,
 };

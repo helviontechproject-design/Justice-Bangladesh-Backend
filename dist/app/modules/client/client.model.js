@@ -8,6 +8,7 @@ const ProfileDetailsSchema = new mongoose_1.Schema({
     last_name: { type: String },
     email: { type: String },
     phone: { type: String },
+    photo: { type: String },
     paypal_Email: { type: String },
     street_address: { type: String },
     district: { type: String },

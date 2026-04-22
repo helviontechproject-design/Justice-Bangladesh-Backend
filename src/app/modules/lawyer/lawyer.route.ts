@@ -23,6 +23,7 @@ router.patch('/admin/:id/ban', checkAuth(ERole.SUPER_ADMIN), lawyerController.ad
 router.patch('/admin/:id/verify', checkAuth(ERole.SUPER_ADMIN), lawyerController.adminVerifyLawyer);
 router.delete('/admin/:id', checkAuth(ERole.SUPER_ADMIN), lawyerController.adminDeleteLawyer);
 router.put('/admin/:id', checkAuth(ERole.SUPER_ADMIN), multerUpload.single('profilePhoto'), lawyerController.adminUpdateLawyer);
+router.patch('/admin/:id/platform-fee', checkAuth(ERole.SUPER_ADMIN), lawyerController.adminSetPlatformFee);
 
 // ===== LAWYER SELF UPDATE =====
 router.patch(

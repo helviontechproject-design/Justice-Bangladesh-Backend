@@ -30,8 +30,8 @@ try {
     private_key: privateKey,
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
     client_id: process.env.FIREBASE_CLIENT_ID,
-    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-    token_uri: 'https://oauth2.googleapis.com/token',
+    auth_uri: process.env.FIREBASE_AUTH_URI ?? 'https://accounts.google.com/o/oauth2/auth',
+    token_uri: process.env.FIREBASE_TOKEN_URI ?? 'https://oauth2.googleapis.com/token',
   };
 
   admin.initializeApp({

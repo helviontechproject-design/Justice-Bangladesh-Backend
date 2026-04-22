@@ -65,6 +65,9 @@ const ExtensionPricingSchema = new Schema(
   {
     enabled: { type: Boolean, default: false },
     per_minute_rate: { type: Number, default: 0 },
+    audio_per_minute_rate: { type: Number, default: 0 },
+    video_per_minute_rate: { type: Number, default: 0 },
+    chamber_per_minute_rate: { type: Number, default: 0 },
     max_extension_minutes: { type: Number, default: 30 },
     description: { type: String },
   },
@@ -133,6 +136,7 @@ const LawyerProfileSchema = new Schema<ILawyerProfile>(
     extension_pricing: { type: ExtensionPricingSchema, default: { enabled: false, per_minute_rate: 0, max_extension_minutes: 30 } },
     payoutMethod: { type: PayoutMethodSchema, default: null },
     withdrawals: [{ type: Types.ObjectId, ref: 'Withdrawal' }],
+    platform_fee_percentage: { type: Number, default: null },
   },
   { timestamps: true }
 );

@@ -5,7 +5,7 @@ const PayoutSchema = new Schema<IPayout>(
   {
     lawyerId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'LawyerProfile',
       required: true,
       index: true,
     },

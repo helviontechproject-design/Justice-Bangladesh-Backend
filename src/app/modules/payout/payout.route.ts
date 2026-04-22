@@ -20,4 +20,7 @@ router.patch('/:id/process', checkAuth(ERole.SUPER_ADMIN), payoutController.proc
 // Marks a payout as failed (e.g., due to invalid bank details or processing errors)
 router.patch('/:id/fail', checkAuth(ERole.SUPER_ADMIN), payoutController.failPayout);
 
+// Admin cancel payout with reason
+router.patch('/:id/admin-cancel', checkAuth(ERole.SUPER_ADMIN), payoutController.adminCancelPayout);
+
 export const payoutRoute = router;

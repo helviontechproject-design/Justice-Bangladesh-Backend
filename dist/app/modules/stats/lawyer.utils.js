@@ -62,29 +62,33 @@ exports.getLawyertodaysAnalytics = getLawyertodaysAnalytics;
 const getLawyertodaysSchedule = (lawyerId) => __awaiter(void 0, void 0, void 0, function* () {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
     const todaysSchedule = yield appointment_model_1.Appointment.find({
         lawyerId: new mongoose_1.Types.ObjectId(lawyerId),
-        appointmentDate: { $gte: today, $lt: tomorrow },
+        appointmentDate: { $gte: today },
         status: appointment_interface_1.AppointmentStatus.CONFIRMED,
     })
-        .populate('clientId', 'profileInfo email')
-        .sort({ selectedTime: 1 })
+        .populate({
+        path: 'clientId',
+        select: 'profileInfo.fast_name profileInfo.last_name profileInfo.photo userId',
+        populate: { path: 'userId', select: 'profilePhoto' },
+    })
+        .sort({ appointmentDate: 1, selectedTime: 1 })
         .lean();
-    console.log(todaysSchedule);
     return todaysSchedule;
 });
 exports.getLawyertodaysSchedule = getLawyertodaysSchedule;
 const getLawyerBookingRequests = (lawyerId) => __awaiter(void 0, void 0, void 0, function* () {
-    const now = new Date();
     const bookingRequests = yield appointment_model_1.Appointment.find({
         lawyerId: new mongoose_1.Types.ObjectId(lawyerId),
         status: appointment_interface_1.AppointmentStatus.PENDING,
-        appointmentDate: { $gte: now }, // Only future appointments (not expired)
+        payment_Status: 'PAID',
     })
-        .populate('clientId', 'profileInfo email')
-        .sort({ createdAt: -1 }) // Latest requests first
+        .populate({
+        path: 'clientId',
+        select: 'profileInfo.fast_name profileInfo.last_name profileInfo.photo userId',
+        populate: { path: 'userId', select: 'profilePhoto' },
+    })
+        .sort({ createdAt: -1 })
         .lean();
     return bookingRequests;
 });

@@ -9,10 +9,10 @@ const validateRequest_1 = require("../../middlewares/validateRequest");
 const appointment_validation_1 = require("./appointment.validation");
 const multer_config_1 = require("../../config/multer.config");
 const router = (0, express_1.Router)();
-// Create appointment (open for development)
-router.post('/', multer_config_1.multerUpload.fields([{ name: 'documents', maxCount: 10 }]), appointment_controller_1.appointmentController.createAppointmentDev);
-// Get my appointments (open for development)
-router.get('/my-appointments', appointment_controller_1.appointmentController.getMyAppointmentsDev);
+// Create appointment (authenticated CLIENT only)
+router.post('/', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), multer_config_1.multerUpload.fields([{ name: 'documents', maxCount: 10 }]), appointment_controller_1.appointmentController.createAppointment);
+// Get my appointments (authenticated)
+router.get('/my-appointments', (0, checkAuth_1.checkAuth)(...Object.values(user_interface_1.ERole)), appointment_controller_1.appointmentController.getMyAppointments);
 // Get appointment statistics (SUPER_ADMIN only)
 router.get('/stats', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), appointment_controller_1.appointmentController.getAppointmentStats);
 // Get all appointments (SUPER_ADMIN only)
@@ -27,6 +27,12 @@ router.patch('/:id/status', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.LA
 router.patch('/:id/payment-status', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), (0, validateRequest_1.validateRequest)(appointment_validation_1.updatePaymentStatusZod), appointment_controller_1.appointmentController.updatePaymentStatus);
 // Delete appointment (CLIENT only - own pending appointments)
 router.delete('/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), appointment_controller_1.appointmentController.deleteAppointment);
+// Reschedule appointment (CLIENT only)
+router.patch('/:id/reschedule', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), appointment_controller_1.appointmentController.rescheduleAppointment);
+// Dev: confirm payment (no real gateway)
+router.post('/:id/confirm-payment-dev', appointment_controller_1.appointmentController.confirmPaymentDev);
+// Cancel appointment with refund (CLIENT or LAWYER)
+router.post('/:id/cancel', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT, user_interface_1.ERole.LAWYER), appointment_controller_1.appointmentController.cancelAppointmentWithRefund);
 // // lawyer dashboard appointment api
 // router.get(
 //   '/lawyer-todays-appointments',

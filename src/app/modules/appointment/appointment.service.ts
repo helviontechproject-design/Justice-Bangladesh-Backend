@@ -30,11 +30,17 @@ const createAppointment = async (
     throw new AppError(StatusCodes.UNAUTHORIZED, "Unauthorized user");
   }
 
-  const client = await ClientProfileModel.findOne({
-    userId: decodedUser.userId,
+  let client = await ClientProfileModel.findOne({
+    userId: new Types.ObjectId(decodedUser.userId),
   });
   if (!client) {
-    throw new AppError(StatusCodes.NOT_FOUND, "Client profile not found");
+    // Auto-create client profile if missing (can happen with phone login)
+    client = await ClientProfileModel.create({
+      userId: new Types.ObjectId(decodedUser.userId),
+      profileInfo: {},
+      gender: 'MALE',
+    });
+    await UserModel.findByIdAndUpdate(decodedUser.userId, { client: client._id });
   }
 
   const lawyer = await LawyerProfileModel.findById(payload.lawyerId);
@@ -71,13 +77,15 @@ const createAppointment = async (
   }
   
   // Check for duplicate booking (same client, same lawyer, same day)
+  const dupDateStart = new Date(appointmentDate);
+  dupDateStart.setUTCHours(0, 0, 0, 0);
+  const dupDateEnd = new Date(appointmentDate);
+  dupDateEnd.setUTCHours(23, 59, 59, 999);
+
   const existingAppointment = await Appointment.findOne({
     clientId: client._id,
     lawyerId: payload.lawyerId,
-    appointmentDate: {
-      $gte: new Date(appointmentDate.setHours(0, 0, 0, 0)),
-      $lt: new Date(appointmentDate.setHours(23, 59, 59, 999))
-    },
+    appointmentDate: { $gte: dupDateStart, $lte: dupDateEnd },
     status: { $in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] }
   });
   
@@ -94,11 +102,16 @@ const createAppointment = async (
     session.startTransaction();
 
     // Atomic check and book with session lock
+    const dateStart = new Date(appointmentDate);
+    dateStart.setUTCHours(0, 0, 0, 0);
+    const dateEnd = new Date(appointmentDate);
+    dateEnd.setUTCHours(23, 59, 59, 999);
+
     const isBooked = await AvailabilityModel.findOne({
       lawyerId: payload.lawyerId,
       availableDates: {
         $elemMatch: {
-          date: appointmentDate,
+          date: { $gte: dateStart, $lte: dateEnd },
           schedules: {
             $elemMatch: {
               time: selectedTime,
@@ -124,7 +137,7 @@ const createAppointment = async (
       lawyerId: payload.lawyerId,
       availableDates: {
         $elemMatch: {
-          date: appointmentDate,
+          date: { $gte: dateStart, $lte: dateEnd },
           schedules: {
             $elemMatch: {
               time: selectedTime,
@@ -143,24 +156,23 @@ const createAppointment = async (
       );
     }
 
-    // Immediately mark slot as pending to prevent race conditions
+    // Mark slot as pending
     await AvailabilityModel.updateOne(
       {
         lawyerId: payload.lawyerId,
-        "availableDates.date": appointmentDate,
+        "availableDates.date": { $gte: dateStart, $lte: dateEnd },
         "availableDates.schedules.time": selectedTime,
       },
       {
         $set: {
           "availableDates.$[date].schedules.$[schedules].isBooked": true,
           "availableDates.$[date].schedules.$[schedules].status": "pending",
-          "availableDates.$[date].schedules.$[schedules].bookedBy":
-            decodedUser.userId,
+          "availableDates.$[date].schedules.$[schedules].bookedBy": decodedUser.userId,
         },
       },
       {
         arrayFilters: [
-          { "date.date": appointmentDate },
+          { "date.date": { $gte: dateStart, $lte: dateEnd } },
           { "schedules.time": selectedTime },
         ],
         session,
@@ -169,13 +181,6 @@ const createAppointment = async (
 
     const videoCallingId = `VC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    if (lawyer.per_consultation_fee === 0) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Consultation fee is not set",
-      );
-    }
 
     const payment = await Payment.create(
       [
@@ -229,11 +234,7 @@ const createAppointment = async (
       { session },
     );
 
-    const userEmail = client.profileInfo.email || "demo@gmail.com";
-    const userName =
-      client.profileInfo.fast_name + " " + client.profileInfo.last_name;
-
-    // bKash payment init (Development mode - auto success)
+    // bKash payment init
     const orderId = `APT-${transactionId}`;
     let bkashURL: string | null = null;
     let bkashPaymentID: string | null = null;
@@ -330,7 +331,7 @@ const getMyAppointments = async (
   const lawyer = await LawyerProfileModel.findOne({
     userId: decodedUser.userId,
   });
-  const client = await ClientProfileModel.findOne({
+  let client = await ClientProfileModel.findOne({
     userId: decodedUser.userId,
   });
 
@@ -339,7 +340,14 @@ const getMyAppointments = async (
   } else if (client) {
     filterQuery = { clientId: client._id };
   } else {
-    throw new AppError(StatusCodes.NOT_FOUND, "Profile not found");
+    // Auto-create client profile if missing
+    client = await ClientProfileModel.create({
+      userId: new Types.ObjectId(decodedUser.userId),
+      profileInfo: {},
+      gender: 'MALE',
+    });
+    await UserModel.findByIdAndUpdate(decodedUser.userId, { client: client._id });
+    filterQuery = { clientId: client._id };
   }
 
   const appointments = Appointment.find(filterQuery)
@@ -646,15 +654,21 @@ const updatePaymentStatus = async (
       status: PaymentStatus.PAID,
     });
 
-    // Update wallet - move from pending to balance
+    // Update wallet with platform fee deduction
     const payment = await Payment.findById(appointment.paymentId);
     if (payment) {
+      const lawyer = await LawyerProfileModel.findById(appointment.lawyerId);
+      const platformFeePercent = lawyer?.platform_fee_percentage ?? 10; // default 10%
+      const platformFee = Math.round((payment.amount * platformFeePercent) / 100);
+      const lawyerEarning = payment.amount - platformFee;
+
       await WalletModel.findOneAndUpdate(
         { lawyerId: appointment.lawyerId },
         {
           $inc: {
-            balance: payment.amount,
-            totalEarned: payment.amount,
+            balance: lawyerEarning,
+            totalEarned: lawyerEarning,
+            totalPlatformFee: platformFee,
           },
           $push: { transactions: payment._id },
         },
@@ -905,28 +919,18 @@ const cancelAppointmentWithRefund = async (
           clientId: appointment.clientId,
           appointmentId: appointment._id,
           transactionId: `REFUND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          amount: -refundAmount, // Negative amount for refund
-          type: 'REFUND',
-          status: 'PAID',
+          amount: refundAmount,
+          type: PaymentType.REFUND,
+          status: PaymentStatus.REFUNDED,
           description: `Refund for cancelled appointment (${refundPercentage}% of ৳${payment.amount})`,
         },
       ], { session });
       
-      // Update client wallet (add refund)
+      // Update lawyer wallet (deduct refund amount)
       await WalletModel.findOneAndUpdate(
-        { clientId: appointment.clientId },
-        {
-          $inc: { balance: refundAmount },
-          $push: { 
-            transactions: {
-              type: 'REFUND',
-              amount: refundAmount,
-              description: `Appointment cancellation refund`,
-              createdAt: new Date()
-            }
-          },
-        },
-        { upsert: true, session },
+        { lawyerId: appointment.lawyerId },
+        { $inc: { balance: -refundAmount } },
+        { session },
       );
     }
 

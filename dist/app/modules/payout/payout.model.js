@@ -6,7 +6,7 @@ const payout_interface_1 = require("./payout.interface");
 const PayoutSchema = new mongoose_1.Schema({
     lawyerId: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'LawyerProfile',
         required: true,
         index: true,
     },

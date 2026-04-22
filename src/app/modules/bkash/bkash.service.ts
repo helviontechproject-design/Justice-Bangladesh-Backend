@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { envVars } from '../../config/env';
 
-// bKash Checkout URL API base
-const BASE_URL = process.env.BKASH_BASE_URL || 'https://tokenized.sandbox.bka.sh/v1.2.0-beta';
+const BASE_URL = envVars.BKASH.BASE_URL;
 
 let _token: string | null = null;
 let _tokenExpiry: number = 0;
@@ -14,14 +13,14 @@ const getToken = async (): Promise<string> => {
   const res = await axios.post(
     `${BASE_URL}/tokenized/checkout/token/grant`,
     {
-      app_key: process.env.BKASH_APP_KEY,
-      app_secret: process.env.BKASH_APP_SECRET,
+      app_key: envVars.BKASH.APP_KEY,
+      app_secret: envVars.BKASH.APP_SECRET,
     },
     {
       headers: {
         'Content-Type': 'application/json',
-        username: process.env.BKASH_USERNAME!,
-        password: process.env.BKASH_PASSWORD!,
+        username: envVars.BKASH.USERNAME,
+        password: envVars.BKASH.PASSWORD,
       },
     }
   );
@@ -50,7 +49,7 @@ const createPayment = async (payload: IBkashCreatePayload) => {
     {
       mode: '0011',
       payerReference: payload.orderId,
-      callbackURL: `${process.env.BKASH_CALLBACK_URL}?orderId=${payload.orderId}`,
+      callbackURL: `${envVars.BKASH.CALLBACK_URL}?orderId=${payload.orderId}`,
       amount: payload.amount,
       currency: payload.currency || 'BDT',
       intent: payload.intent || 'sale',
@@ -60,7 +59,7 @@ const createPayment = async (payload: IBkashCreatePayload) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: token,
-        'X-APP-Key': process.env.BKASH_APP_KEY!,
+        'X-APP-Key': envVars.BKASH.APP_KEY,
       },
     }
   );
@@ -79,7 +78,7 @@ const executePayment = async (paymentID: string) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: token,
-        'X-APP-Key': process.env.BKASH_APP_KEY!,
+        'X-APP-Key': envVars.BKASH.APP_KEY,
       },
     }
   );
@@ -98,7 +97,7 @@ const queryPayment = async (paymentID: string) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: token,
-        'X-APP-Key': process.env.BKASH_APP_KEY!,
+        'X-APP-Key': envVars.BKASH.APP_KEY,
       },
     }
   );
@@ -117,7 +116,7 @@ const refundPayment = async (paymentID: string, trxID: string, amount: string, r
       headers: {
         'Content-Type': 'application/json',
         Authorization: token,
-        'X-APP-Key': process.env.BKASH_APP_KEY!,
+        'X-APP-Key': envVars.BKASH.APP_KEY,
       },
     }
   );

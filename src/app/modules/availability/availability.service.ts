@@ -4,8 +4,6 @@ import { AvailabilityModel } from "./availability.model";
 import { Types } from "mongoose";
 import AppError from "../../errorHelpers/AppError";
 import { StatusCodes } from "http-status-codes";
-import { QueryBuilder } from "../../utils/QueryBuilder";
-import { availabilitiesSearchableFields } from "../../constants";
 import { LawyerProfileModel } from "../lawyer/lawyer.model";
 
 export const setAvailability = async (
@@ -101,51 +99,32 @@ export const setAvailability = async (
 };
 
 const getAvailability = async (query: Record<string, string>) => {
-  let filter = {};
-  
-  // If lawyerId is provided, filter by it
+  // Build base filter with proper ObjectId conversion
+  const filter: any = {};
   if (query.lawyerId) {
-    filter = { lawyerId: query.lawyerId };
+    filter.lawyerId = new Types.ObjectId(query.lawyerId);
   }
-  
-  const availabilities = AvailabilityModel.find(filter);
 
-  const queryBuilder = new QueryBuilder(availabilities, query);
+  // Fetch all matching records without pagination limit
+  const data = await AvailabilityModel.find(filter).sort({ month: 1 }).lean();
 
-  const allAvailabilities = queryBuilder
-    .search(availabilitiesSearchableFields)
-    .filter()
-    .paginate();
-
-  const [data, meta] = await Promise.all([
-    allAvailabilities.build().exec(),
-    queryBuilder.getMeta(),
-  ]);
-
-  // If lawyerId is provided, also check lawyer's visibility settings
+  // Filter by lawyer visibility settings
   if (query.lawyerId && data.length > 0) {
-    const lawyer = await LawyerProfileModel.findById(query.lawyerId);
+    const lawyer = await LawyerProfileModel.findById(query.lawyerId).lean();
     if (lawyer) {
-      // Filter availability based on lawyer's visibility settings
-      const filteredData = data.filter(availability => {
-        const bookingType = availability.bookingType;
-        if (bookingType === 'Video Call' && !lawyer.videoConsult) return false;
-        if (bookingType === 'Audio Call' && !lawyer.audioCall) return false;
-        if (bookingType === 'In Person' && !lawyer.inPerson) return false;
-        return availability.isActive !== false; // Only show active availabilities
+      const filteredData = data.filter((availability) => {
+        if (!availability.isActive) return false;
+        const bt = availability.bookingType;
+        if (bt === 'Video Call' && !lawyer.videoConsult) return false;
+        if (bt === 'Audio Call' && !lawyer.audioCall) return false;
+        if (bt === 'In Person' && !lawyer.inPerson) return false;
+        return true;
       });
-      
-      return {
-        data: filteredData,
-        meta: { ...meta, total: filteredData.length },
-      };
+      return { data: filteredData, meta: { total: filteredData.length } };
     }
   }
 
-  return {
-    data,
-    meta,
-  };
+  return { data, meta: { total: data.length } };
 };
 
 const getAvailabilityById = async (id: string) => {

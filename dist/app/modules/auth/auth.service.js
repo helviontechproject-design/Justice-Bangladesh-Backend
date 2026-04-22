@@ -31,6 +31,22 @@ const OTP_ENABLED = true;
 const OTP_EXPIRY_MINUTES = 5;
 const TEST_OTP = '5805';
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const normalizePhone = (phone) => {
+    if (!phone)
+        return '';
+    let value = phone.toString().trim();
+    if (value.startsWith('+')) {
+        value = '+' + value.slice(1).replace(/\D/g, '');
+    }
+    else {
+        value = value.replace(/\D/g, '');
+        if (!value.startsWith('88')) {
+            value = `88${value}`;
+        }
+        value = `+${value}`;
+    }
+    return value;
+};
 // Skip WhatsApp in dev — just save OTP to DB silently
 const sendWhatsAppOTP = (phone, otp) => __awaiter(void 0, void 0, void 0, function* () {
     if (process.env.NODE_ENV !== 'production') {
@@ -63,11 +79,12 @@ const sendWhatsAppOTP = (phone, otp) => __awaiter(void 0, void 0, void 0, functi
 });
 const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d, _e;
-    if (!payload.phone) {
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Phone Number Not Found!");
     }
     const isPhoneExist = yield user_model_1.UserModel.findOne({
-        'phoneNo.value': payload.phone,
+        'phoneNo.value': phone,
     });
     if (isPhoneExist) {
         if (isPhoneExist.role === user_interface_1.ERole.CLIENT) {
@@ -88,7 +105,7 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             {
                 email: payload.email,
                 phoneNo: {
-                    value: payload.phone,
+                    value: phone,
                 },
                 role: user_interface_1.ERole.LAWYER,
                 isVerified: !OTP_ENABLED,
@@ -103,7 +120,7 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
                     fast_name: payload.fast_name || '',
                     last_name: payload.last_name || '',
                     email: payload.email || '',
-                    phone: payload.phone || '',
+                    phone,
                     paypal_Email: ((_a = payload.profile_Details) === null || _a === void 0 ? void 0 : _a.paypal_Email) || '',
                     street_address: ((_b = payload.profile_Details) === null || _b === void 0 ? void 0 : _b.street_address) || '',
                     district: ((_c = payload.profile_Details) === null || _c === void 0 ? void 0 : _c.district) || '',
@@ -140,7 +157,7 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
             yield session.commitTransaction();
             session.endSession();
-            yield sendWhatsAppOTP(payload.phone, otp);
+            yield sendWhatsAppOTP(phone, otp);
         }
         else {
             yield session.commitTransaction();
@@ -162,11 +179,12 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
 });
 exports.createLawyerAccount = createLawyerAccount;
 const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!payload.phone) {
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Phone Number Not Found!");
     }
     const isPhoneExist = yield user_model_1.UserModel.findOne({
-        "phoneNo.value": payload.phone,
+        "phoneNo.value": phone,
     });
     if (isPhoneExist) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Phone Number already exists! Please use a different number.");
@@ -184,7 +202,7 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             {
                 email: payload.email,
                 phoneNo: {
-                    value: payload.phone,
+                    value: phone,
                 },
                 role: user_interface_1.ERole.CLIENT,
                 // OTP disabled temporarily for development — mark verified immediately
@@ -200,7 +218,7 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
                     fast_name: payload.fast_name || "",
                     last_name: payload.last_name || "",
                     email: payload.email || "",
-                    phone: payload.phone || "",
+                    phone,
                     paypal_Email: "",
                     street_address: "",
                     district: "",
@@ -217,7 +235,7 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
             yield session.commitTransaction();
             session.endSession();
-            yield sendWhatsAppOTP(payload.phone, otp);
+            yield sendWhatsAppOTP(phone, otp);
         }
         else {
             yield session.commitTransaction();
@@ -239,10 +257,11 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
 });
 exports.createClientAccount = createClientAccount;
 const verifyOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!payload.phone) {
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Phone Number Missing");
     }
-    const user = yield user_model_1.UserModel.findOne({ "phoneNo.value": payload.phone });
+    const user = yield user_model_1.UserModel.findOne({ "phoneNo.value": phone });
     if (!user) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "User Not Found");
     }
@@ -287,7 +306,7 @@ const verifyOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
     const tokens = (0, createTokens_1.createUserTokens)(user);
-    return Object.assign(Object.assign({}, user.toObject()), { tokens: {
+    return Object.assign(Object.assign({}, user.toObject()), { client: user.client, lawyer: user.lawyer, tokens: {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
         } });
@@ -297,7 +316,11 @@ const verifyOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.verifyOTP = verifyOTP;
 const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    let user = yield user_model_1.UserModel.findOne({ 'phoneNo.value': payload.phone });
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Phone Number Not Found');
+    }
+    let user = yield user_model_1.UserModel.findOne({ 'phoneNo.value': phone });
     // Deleted user — treat as new user
     if (user === null || user === void 0 ? void 0 : user.isDeleted) {
         yield user_model_1.UserModel.findByIdAndDelete(user._id);
@@ -309,7 +332,7 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         session.startTransaction();
         try {
             const created = yield user_model_1.UserModel.create([{
-                    phoneNo: { value: payload.phone },
+                    phoneNo: { value: phone },
                     role: user_interface_1.ERole.CLIENT,
                     isVerified: !OTP_ENABLED,
                     isActive: user_interface_1.EIsActive.ACTIVE,
@@ -317,7 +340,7 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
             const userId = created[0]._id;
             const clientProfile = yield client_model_1.ClientProfileModel.create([{
                     userId,
-                    profileInfo: { phone: payload.phone },
+                    profileInfo: { phone },
                     gender: 'MALE',
                 }], { session });
             yield user_model_1.UserModel.findByIdAndUpdate(userId, { client: clientProfile[0]._id }, { session });
@@ -345,7 +368,7 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         const otp = generateOTP();
         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
         yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-        yield sendWhatsAppOTP(payload.phone, otp);
+        yield sendWhatsAppOTP(phone, otp);
         return {
             message: 'Verification code sent via WhatsApp!',
             role: user.role,
@@ -367,17 +390,18 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.userLogin = userLogin;
 const resendOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!payload.phone) {
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Phone Number Missing");
     }
-    const user = yield user_model_1.UserModel.findOne({ "phoneNo.value": payload.phone });
+    const user = yield user_model_1.UserModel.findOne({ "phoneNo.value": phone });
     if (!user) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "User Not Found");
     }
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-    yield sendWhatsAppOTP(payload.phone, otp);
+    yield sendWhatsAppOTP(phone, otp);
     return {
         success: true,
         message: "New verification code sent via WhatsApp!",
@@ -394,6 +418,7 @@ const getNewAccessToken = (refreshToken) => __awaiter(void 0, void 0, void 0, fu
     };
 });
 const addPhoneNo = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     //  User check
     const user = yield user_model_1.UserModel.findById(decodedUser === null || decodedUser === void 0 ? void 0 : decodedUser.userId);
     if (!user) {
@@ -401,7 +426,7 @@ const addPhoneNo = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, f
     }
     //  Update user phone and status
     user.phoneNo = {
-        value: payload.phone.toString(),
+        value: normalizePhone((_a = payload.phone) === null || _a === void 0 ? void 0 : _a.toString()),
         isVerified: false,
     };
     user.isActive = user_interface_1.EIsActive.INACTIVE;
@@ -410,7 +435,7 @@ const addPhoneNo = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, f
         const otp = generateOTP();
         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
         yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-        yield sendWhatsAppOTP(payload.phone.toString(), otp);
+        yield sendWhatsAppOTP(normalizePhone((_b = payload.phone) === null || _b === void 0 ? void 0 : _b.toString()), otp);
     }
     return {
         success: true,
@@ -458,20 +483,24 @@ const firebasePhoneLogin = (payload) => __awaiter(void 0, void 0, void 0, functi
     if (!payload.idToken || !payload.phone) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'idToken and phone are required');
     }
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Phone Number Not Found');
+    }
     // 1. Verify the Firebase ID token — throws if invalid/expired
     const decoded = yield firebase_1.admin.auth().verifyIdToken(payload.idToken);
     if (!decoded.phone_number && !decoded.uid) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.UNAUTHORIZED, 'Invalid Firebase token');
     }
     // 2. Find existing user by phone
-    let user = yield user_model_1.UserModel.findOne({ 'phoneNo.value': payload.phone });
+    let user = yield user_model_1.UserModel.findOne({ 'phoneNo.value': phone });
     // 3. Auto-create client if first login
     if (!user) {
         const session = yield mongoose_1.default.startSession();
         session.startTransaction();
         try {
             const created = yield user_model_1.UserModel.create([{
-                    phoneNo: { value: payload.phone, isVerified: true },
+                    phoneNo: { value: phone, isVerified: true },
                     role: user_interface_1.ERole.CLIENT,
                     isVerified: true,
                     isActive: user_interface_1.EIsActive.ACTIVE,
@@ -479,7 +508,7 @@ const firebasePhoneLogin = (payload) => __awaiter(void 0, void 0, void 0, functi
             const userId = created[0]._id;
             const clientProfile = yield client_model_1.ClientProfileModel.create([{
                     userId,
-                    profileInfo: { phone: payload.phone },
+                    profileInfo: { phone },
                     gender: 'MALE',
                 }], { session });
             yield user_model_1.UserModel.findByIdAndUpdate(userId, { client: clientProfile[0]._id }, { session });
@@ -562,9 +591,22 @@ exports.authServices = {
 function googleMobileLogin(payload) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f, _g;
-        let user = yield user_model_1.UserModel.findOne({ email: payload.email });
+        // 1. Find by googleId first (most reliable)
+        let user = yield user_model_1.UserModel.findOne({ 'auths.providerId': payload.googleId });
+        // 2. If not found by googleId, find by email
         if (!user) {
-            // Create new client account
+            user = yield user_model_1.UserModel.findOne({ email: payload.email });
+            // Link google to this existing account
+            if (user) {
+                const hasGoogle = (_a = user.auths) === null || _a === void 0 ? void 0 : _a.some(a => a.provider === 'google');
+                if (!hasGoogle) {
+                    yield user_model_1.UserModel.findByIdAndUpdate(user._id, Object.assign({ $push: { auths: { provider: 'google', providerId: payload.googleId } } }, (payload.photo && !user.profilePhoto ? { profilePhoto: payload.photo } : {})));
+                    user = yield user_model_1.UserModel.findById(user._id);
+                }
+            }
+        }
+        if (!user) {
+            // 3. Create new client account
             const session = yield mongoose_1.default.startSession();
             session.startTransaction();
             try {
@@ -575,14 +617,13 @@ function googleMobileLogin(payload) {
                         isVerified: true,
                         isActive: user_interface_1.EIsActive.ACTIVE,
                         auths: [{ provider: 'google', providerId: payload.googleId }],
-                        // Do NOT set phoneNo — leave undefined so sparse unique index works
                     }], { session });
                 const userId = created[0]._id;
                 const clientProfile = yield client_model_1.ClientProfileModel.create([{
                         userId,
                         profileInfo: {
-                            fast_name: (_b = (_a = payload.name) === null || _a === void 0 ? void 0 : _a.split(' ')[0]) !== null && _b !== void 0 ? _b : '',
-                            last_name: (_d = (_c = payload.name) === null || _c === void 0 ? void 0 : _c.split(' ').slice(1).join(' ')) !== null && _d !== void 0 ? _d : '',
+                            fast_name: (_c = (_b = payload.name) === null || _b === void 0 ? void 0 : _b.split(' ')[0]) !== null && _c !== void 0 ? _c : '',
+                            last_name: (_e = (_d = payload.name) === null || _d === void 0 ? void 0 : _d.split(' ').slice(1).join(' ')) !== null && _e !== void 0 ? _e : '',
                             email: payload.email,
                         },
                     }], { session });
@@ -598,16 +639,10 @@ function googleMobileLogin(payload) {
             }
         }
         else {
-            // Update photo if changed
+            // Update photo if not set
             if (payload.photo && !user.profilePhoto) {
                 yield user_model_1.UserModel.findByIdAndUpdate(user._id, { profilePhoto: payload.photo });
-            }
-            // Add google auth provider if not exists
-            const hasGoogle = (_e = user.auths) === null || _e === void 0 ? void 0 : _e.some(a => a.provider === 'google');
-            if (!hasGoogle) {
-                yield user_model_1.UserModel.findByIdAndUpdate(user._id, {
-                    $push: { auths: { provider: 'google', providerId: payload.googleId } }
-                });
+                user = yield user_model_1.UserModel.findById(user._id);
             }
         }
         if (!user)

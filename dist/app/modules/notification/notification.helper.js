@@ -127,7 +127,69 @@ class NotificationHelperClass {
     /**
      * Notify both client and lawyer when appointment is cancelled
      */
-    notifyAppointmentCancelled(appointment, cancelledByUserId) {
+    sendAppointmentReminder(appointment, timeLabel) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d;
+            const lawyerName = ((_b = (_a = appointment.lawyerId) === null || _a === void 0 ? void 0 : _a.profile_Details) === null || _b === void 0 ? void 0 : _b.fast_name) || 'your lawyer';
+            const clientName = ((_d = (_c = appointment.clientId) === null || _c === void 0 ? void 0 : _c.profileInfo) === null || _d === void 0 ? void 0 : _d.fast_name) || 'your client';
+            const appointmentDate = appointment.appointmentDate
+                ? new Date(appointment.appointmentDate).toLocaleDateString()
+                : 'soon';
+            const notifications = [
+                {
+                    userId: appointment.clientId._id || appointment.clientId,
+                    type: notification_interface_1.NotificationType.BOOKING_CONFIRMED,
+                    title: `⏰ Appointment Reminder`,
+                    message: `Reminder: Your appointment with ${lawyerName} is in ${timeLabel} on ${appointmentDate}.`,
+                    relatedEntityId: appointment._id,
+                    relatedEntityType: 'appointment',
+                    priority: notification_interface_1.NotificationPriority.HIGH,
+                },
+                {
+                    userId: appointment.lawyerId._id || appointment.lawyerId,
+                    type: notification_interface_1.NotificationType.BOOKING_CONFIRMED,
+                    title: `⏰ Appointment Reminder`,
+                    message: `Reminder: Your appointment with ${clientName} is in ${timeLabel} on ${appointmentDate}.`,
+                    relatedEntityId: appointment._id,
+                    relatedEntityType: 'appointment',
+                    priority: notification_interface_1.NotificationPriority.HIGH,
+                },
+            ];
+            yield this.createBulkNotifications(notifications);
+        });
+    }
+    notifyAppointmentRescheduled(appointment) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c, _d;
+            const lawyerName = ((_b = (_a = appointment.lawyerId) === null || _a === void 0 ? void 0 : _a.profile_Details) === null || _b === void 0 ? void 0 : _b.fast_name) || 'your lawyer';
+            const clientName = ((_d = (_c = appointment.clientId) === null || _c === void 0 ? void 0 : _c.profileInfo) === null || _d === void 0 ? void 0 : _d.fast_name) || 'the client';
+            const newDate = appointment.appointmentDate
+                ? new Date(appointment.appointmentDate).toLocaleDateString()
+                : 'a new date';
+            const notifications = [
+                {
+                    userId: appointment.clientId._id || appointment.clientId,
+                    type: notification_interface_1.NotificationType.BOOKING_CONFIRMED,
+                    title: '🔄 Appointment Rescheduled',
+                    message: `Your appointment with ${lawyerName} has been rescheduled to ${newDate} at ${appointment.selectedTime}.`,
+                    relatedEntityId: appointment._id,
+                    relatedEntityType: 'appointment',
+                    priority: notification_interface_1.NotificationPriority.HIGH,
+                },
+                {
+                    userId: appointment.lawyerId._id || appointment.lawyerId,
+                    type: notification_interface_1.NotificationType.BOOKING_CONFIRMED,
+                    title: '🔄 Appointment Rescheduled',
+                    message: `${clientName} has rescheduled their appointment to ${newDate} at ${appointment.selectedTime}.`,
+                    relatedEntityId: appointment._id,
+                    relatedEntityType: 'appointment',
+                    priority: notification_interface_1.NotificationPriority.HIGH,
+                },
+            ];
+            yield this.createBulkNotifications(notifications);
+        });
+    }
+    notifyAppointmentCancelled(appointment, cancelledByUserId, refundAmount) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a, _b, _c, _d, _e;
             const clientName = ((_b = (_a = appointment.clientId) === null || _a === void 0 ? void 0 : _a.profileInfo) === null || _b === void 0 ? void 0 : _b.name) || 'The client';
@@ -140,7 +202,7 @@ class NotificationHelperClass {
                 type: notification_interface_1.NotificationType.BOOKING_CANCELLED,
                 title: '🚫 Appointment Cancelled',
                 message: cancelledByClient
-                    ? `You have cancelled your appointment. ${appointment.payment_Status === 'PAID' ? 'Refund is being processed.' : ''}`
+                    ? `You have cancelled your appointment. ${refundAmount && refundAmount > 0 ? `৳${refundAmount} refund will be processed to your wallet.` : appointment.payment_Status === 'PAID' ? 'Refund is being processed.' : ''}`
                     : `Your appointment has been cancelled by ${lawyerName}.`,
                 relatedEntityId: appointment._id,
                 relatedEntityType: 'appointment',

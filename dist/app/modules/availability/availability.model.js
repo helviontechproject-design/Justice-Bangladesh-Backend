@@ -24,7 +24,7 @@ const AvailabilitySchema = new mongoose_1.Schema({
     },
     bookingType: {
         type: String,
-        enum: ['online', 'In Persona', 'chat'],
+        enum: ['Video Call', 'Audio Call', 'In Person'],
         required: true,
     },
     month: { type: String, required: true },

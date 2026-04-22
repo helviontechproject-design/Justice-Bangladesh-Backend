@@ -26,7 +26,15 @@ const updateClient = (decodedUser, ClientId, payload) => __awaiter(void 0, void 
     if (!client) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'client not found');
     }
-    const updatedLawyer = yield client_model_1.ClientProfileModel.findByIdAndUpdate(ClientId, payload, { new: true });
+    const updateData = {};
+    if (payload.profileInfo) {
+        Object.entries(payload.profileInfo).forEach(([key, value]) => {
+            updateData[`profileInfo.${key}`] = value;
+        });
+        delete payload.profileInfo;
+    }
+    Object.assign(updateData, payload);
+    const updatedLawyer = yield client_model_1.ClientProfileModel.findByIdAndUpdate(ClientId, { $set: updateData }, { new: true });
     return updatedLawyer;
 });
 const getAllClients = (query, decodedUser) => __awaiter(void 0, void 0, void 0, function* () {

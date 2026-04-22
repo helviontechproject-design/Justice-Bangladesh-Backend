@@ -46,8 +46,16 @@ const requestPayout = (lawyerUserId, payload) => __awaiter(void 0, void 0, void 
     if (payload.amount < settings.payout.minimumAmount) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, `Minimum payout amount is ${settings.payout.minimumAmount} BDT`);
     }
-    // Calculate platform fee and net amount
-    const platformFee = yield settings_service_1.settingsService.calculatePlatformFee(payload.amount);
+    // Calculate platform fee — use lawyer's individual fee if set, else global settings
+    let platformFeePercent;
+    if (lawyerProfile.platform_fee_percentage !== null && lawyerProfile.platform_fee_percentage !== undefined) {
+        platformFeePercent = lawyerProfile.platform_fee_percentage;
+    }
+    else {
+        const settings = yield settings_service_1.settingsService.getPlatformSettings();
+        platformFeePercent = settings.platformFee.enabled ? settings.platformFee.percentage : 0;
+    }
+    const platformFee = Math.round((payload.amount * platformFeePercent) / 100);
     const netAmount = payload.amount - platformFee;
     // Create payout request with fee breakdown
     const payout = yield payout_model_1.Payout.create(Object.assign(Object.assign({}, payload), { lawyerId,
@@ -126,12 +134,15 @@ const failPayout = (id, failureReason) => __awaiter(void 0, void 0, void 0, func
     yield notification_helper_1.NotificationHelper.notifyPayoutFailed(payout);
     return payout;
 });
-const cancelPayout = (id, lawyerId) => __awaiter(void 0, void 0, void 0, function* () {
+const cancelPayout = (id, lawyerUserId, reason) => __awaiter(void 0, void 0, void 0, function* () {
     const payout = yield payout_model_1.Payout.findById(id);
     if (!payout) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "Payout not found");
     }
-    if (payout.lawyerId.toString() !== lawyerId) {
+    const lawyerProfile = yield lawyer_model_1.LawyerProfileModel.findOne({ userId: lawyerUserId });
+    if (!lawyerProfile)
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Lawyer not found');
+    if (payout.lawyerId.toString() !== lawyerProfile._id.toString()) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.FORBIDDEN, "You can only cancel your own payouts");
     }
     if (payout.status !== payout_interface_1.PayoutStatus.PENDING) {
@@ -144,6 +155,8 @@ const cancelPayout = (id, lawyerId) => __awaiter(void 0, void 0, void 0, functio
     }
     // Update payout status
     payout.status = payout_interface_1.PayoutStatus.CANCELLED;
+    if (reason)
+        payout.failureReason = reason;
     yield payout.save();
     // Return FULL amount to balance from pending (refund platform fee too)
     wallet.balance += payout.amount;
@@ -163,7 +176,11 @@ const getAllPayouts = (query) => __awaiter(void 0, void 0, void 0, function* () 
         "currency",
         "lawyerId",
     ];
-    const payoutQuery = new QueryBuilder_1.QueryBuilder(payout_model_1.Payout.find().populate("lawyerId", "name email phoneNumber avatarUrl"), query)
+    const payoutQuery = new QueryBuilder_1.QueryBuilder(payout_model_1.Payout.find().populate({
+        path: 'lawyerId',
+        select: 'profile_Details userId',
+        populate: { path: 'userId', select: 'profilePhoto phoneNo' },
+    }), query)
         .search(payoutSearchableFields)
         .filter()
         .sort()

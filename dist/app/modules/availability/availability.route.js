@@ -14,6 +14,8 @@ router.get('/my-availability', (0, checkAuth_1.checkAuth)(user_interface_1.ERole
 router.get('/admin/lawyer/:lawyerId', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), availability_controller_1.availabilityController.getAvailabilityByLawyerId);
 // Admin: set availability for a lawyer
 router.post('/admin/set', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), availability_controller_1.availabilityController.adminSetAvailability);
+// Admin: sync availability with visibility settings
+router.post('/admin/sync/:lawyerId', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.SUPER_ADMIN), availability_controller_1.availabilityController.syncAvailabilityWithVisibility);
 // Get all availability (public or filtered by lawyerId)
 router.get('/get-availability', availability_controller_1.availabilityController.getAvailability);
 // Get availability by ID

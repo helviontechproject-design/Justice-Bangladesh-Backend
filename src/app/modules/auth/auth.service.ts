@@ -370,6 +370,8 @@ export const verifyOTP = async (payload: { phone: string; otp?: string }) => {
   const tokens = createUserTokens(user);
   return {
     ...user.toObject(),
+    client: user.client,
+    lawyer: user.lawyer,
     tokens: {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -686,10 +688,27 @@ export const authServices = {
 };
 
 async function googleMobileLogin(payload: { email: string; name?: string; photo?: string; googleId: string }) {
-  let user = await UserModel.findOne({ email: payload.email });
+  // 1. Find by googleId first (most reliable)
+  let user = await UserModel.findOne({ 'auths.providerId': payload.googleId });
+
+  // 2. If not found by googleId, find by email
+  if (!user) {
+    user = await UserModel.findOne({ email: payload.email });
+    // Link google to this existing account
+    if (user) {
+      const hasGoogle = user.auths?.some(a => a.provider === 'google');
+      if (!hasGoogle) {
+        await UserModel.findByIdAndUpdate(user._id, {
+          $push: { auths: { provider: 'google', providerId: payload.googleId } },
+          ...(payload.photo && !user.profilePhoto ? { profilePhoto: payload.photo } : {}),
+        });
+        user = await UserModel.findById(user._id);
+      }
+    }
+  }
 
   if (!user) {
-    // Create new client account
+    // 3. Create new client account
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -700,7 +719,6 @@ async function googleMobileLogin(payload: { email: string; name?: string; photo?
         isVerified: true,
         isActive: EIsActive.ACTIVE,
         auths: [{ provider: 'google', providerId: payload.googleId }],
-        // Do NOT set phoneNo — leave undefined so sparse unique index works
       }], { session });
       const userId = created[0]._id;
       const clientProfile = await ClientProfileModel.create([{
@@ -721,16 +739,10 @@ async function googleMobileLogin(payload: { email: string; name?: string; photo?
       throw new AppError(StatusCodes.INTERNAL_SERVER_ERROR, `${err}`);
     }
   } else {
-    // Update photo if changed
+    // Update photo if not set
     if (payload.photo && !user.profilePhoto) {
       await UserModel.findByIdAndUpdate(user._id, { profilePhoto: payload.photo });
-    }
-    // Add google auth provider if not exists
-    const hasGoogle = user.auths?.some(a => a.provider === 'google');
-    if (!hasGoogle) {
-      await UserModel.findByIdAndUpdate(user._id, {
-        $push: { auths: { provider: 'google', providerId: payload.googleId } }
-      });
+      user = await UserModel.findById(user._id);
     }
   }
 

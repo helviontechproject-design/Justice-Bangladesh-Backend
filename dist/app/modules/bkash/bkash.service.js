@@ -14,8 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BkashService = void 0;
 const axios_1 = __importDefault(require("axios"));
-// bKash Checkout URL API base
-const BASE_URL = process.env.BKASH_BASE_URL || 'https://tokenized.sandbox.bka.sh/v1.2.0-beta';
+const env_1 = require("../../config/env");
+const BASE_URL = env_1.envVars.BKASH.BASE_URL;
 let _token = null;
 let _tokenExpiry = 0;
 // Get grant token (cached, refreshed when expired)
@@ -23,13 +23,13 @@ const getToken = () => __awaiter(void 0, void 0, void 0, function* () {
     if (_token && Date.now() < _tokenExpiry)
         return _token;
     const res = yield axios_1.default.post(`${BASE_URL}/tokenized/checkout/token/grant`, {
-        app_key: process.env.BKASH_APP_KEY,
-        app_secret: process.env.BKASH_APP_SECRET,
+        app_key: env_1.envVars.BKASH.APP_KEY,
+        app_secret: env_1.envVars.BKASH.APP_SECRET,
     }, {
         headers: {
             'Content-Type': 'application/json',
-            username: process.env.BKASH_USERNAME,
-            password: process.env.BKASH_PASSWORD,
+            username: env_1.envVars.BKASH.USERNAME,
+            password: env_1.envVars.BKASH.PASSWORD,
         },
     });
     const resData = res.data;
@@ -44,7 +44,7 @@ const createPayment = (payload) => __awaiter(void 0, void 0, void 0, function* (
     const res = yield axios_1.default.post(`${BASE_URL}/tokenized/checkout/create`, {
         mode: '0011',
         payerReference: payload.orderId,
-        callbackURL: `${process.env.BKASH_CALLBACK_URL}?orderId=${payload.orderId}`,
+        callbackURL: `${env_1.envVars.BKASH.CALLBACK_URL}?orderId=${payload.orderId}`,
         amount: payload.amount,
         currency: payload.currency || 'BDT',
         intent: payload.intent || 'sale',
@@ -53,7 +53,7 @@ const createPayment = (payload) => __awaiter(void 0, void 0, void 0, function* (
         headers: {
             'Content-Type': 'application/json',
             Authorization: token,
-            'X-APP-Key': process.env.BKASH_APP_KEY,
+            'X-APP-Key': env_1.envVars.BKASH.APP_KEY,
         },
     });
     return res.data; // contains bkashURL, paymentID, statusCode
@@ -65,7 +65,7 @@ const executePayment = (paymentID) => __awaiter(void 0, void 0, void 0, function
         headers: {
             'Content-Type': 'application/json',
             Authorization: token,
-            'X-APP-Key': process.env.BKASH_APP_KEY,
+            'X-APP-Key': env_1.envVars.BKASH.APP_KEY,
         },
     });
     return res.data; // contains trxID, transactionStatus, amount
@@ -77,7 +77,7 @@ const queryPayment = (paymentID) => __awaiter(void 0, void 0, void 0, function* 
         headers: {
             'Content-Type': 'application/json',
             Authorization: token,
-            'X-APP-Key': process.env.BKASH_APP_KEY,
+            'X-APP-Key': env_1.envVars.BKASH.APP_KEY,
         },
     });
     return res.data;
@@ -89,7 +89,7 @@ const refundPayment = (paymentID, trxID, amount, reason) => __awaiter(void 0, vo
         headers: {
             'Content-Type': 'application/json',
             Authorization: token,
-            'X-APP-Key': process.env.BKASH_APP_KEY,
+            'X-APP-Key': env_1.envVars.BKASH.APP_KEY,
         },
     });
     return res.data;

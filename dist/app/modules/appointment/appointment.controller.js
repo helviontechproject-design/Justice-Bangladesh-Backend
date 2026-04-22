@@ -51,7 +51,8 @@ const appointment_service_1 = require("./appointment.service");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_codes_1 = require("http-status-codes");
 const createAppointment = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const files = req.files;
+    var _a;
+    const files = ((_a = req.files) !== null && _a !== void 0 ? _a : {});
     const decodedUser = req.user;
     const payload = Object.assign(Object.assign({}, req.body), { documents: files["documents"]
             ? files["documents"].map((f) => f.path)
@@ -130,15 +131,44 @@ const updatePaymentStatus = (0, catchAsync_1.catchAsync)((req, res, next) => __a
         data: appointment,
     });
 }));
+const rescheduleAppointment = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { newDate, newTime } = req.body;
+    const decodedUser = req.user;
+    const appointment = yield appointment_service_1.appointmentService.rescheduleAppointment(id, decodedUser, newDate, newTime);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: "Appointment rescheduled successfully",
+        data: appointment,
+    });
+}));
+const cancelAppointmentWithRefund = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const decodedUser = req.user;
+    const result = yield appointment_service_1.appointmentService.cancelAppointmentWithRefund(id, decodedUser, reason);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: result.message,
+        data: {
+            appointment: result.appointment,
+            refundAmount: result.refundAmount,
+            refundPercentage: result.refundPercentage,
+        },
+    });
+}));
 const deleteAppointment = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const decodedUser = req.user;
-    yield appointment_service_1.appointmentService.deleteAppointment(id, decodedUser);
+    // For now, redirect to cancel with refund
+    const result = yield appointment_service_1.appointmentService.cancelAppointmentWithRefund(id, decodedUser, 'Appointment deleted by user');
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
         message: "Appointment deleted successfully",
-        data: null,
+        data: result,
     });
 }));
 const getAppointmentStats = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -176,6 +206,25 @@ const createAppointmentDev = (0, catchAsync_1.catchAsync)((req, res) => __awaite
         data: appointment,
     });
 }));
+// Dev: confirm payment without real gateway
+const confirmPaymentDev = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { Appointment } = yield Promise.resolve().then(() => __importStar(require('./appointment.model')));
+    const { Payment } = yield Promise.resolve().then(() => __importStar(require('../payment/payment.model')));
+    const { WalletModel } = yield Promise.resolve().then(() => __importStar(require('../wallet/wallet.model')));
+    const { AppointmentPaymentStatus, AppointmentStatus } = yield Promise.resolve().then(() => __importStar(require('./appointment.interface')));
+    const { PaymentStatus } = yield Promise.resolve().then(() => __importStar(require('../payment/payment.interface')));
+    const appointment = yield Appointment.findByIdAndUpdate(id, { payment_Status: AppointmentPaymentStatus.PAID, status: AppointmentStatus.PENDING }, { new: true });
+    if (!appointment)
+        throw new Error('Appointment not found');
+    if (appointment.paymentId) {
+        const payment = yield Payment.findByIdAndUpdate(appointment.paymentId, { status: PaymentStatus.PAID }, { new: true });
+        if (payment) {
+            yield WalletModel.findOneAndUpdate({ lawyerId: appointment.lawyerId }, { $inc: { balance: payment.amount, totalEarned: payment.amount }, $push: { transactions: payment._id } }, { upsert: true });
+        }
+    }
+    (0, sendResponse_1.default)(res, { success: true, statusCode: 200, message: 'Payment confirmed', data: appointment });
+}));
 // Dev: get all recent appointments without auth
 const getMyAppointmentsDev = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { Appointment } = yield Promise.resolve().then(() => __importStar(require('./appointment.model')));
@@ -195,6 +244,7 @@ const getMyAppointmentsDev = (0, catchAsync_1.catchAsync)((req, res) => __awaite
 exports.appointmentController = {
     createAppointment,
     createAppointmentDev,
+    confirmPaymentDev,
     getAllAppointments,
     getMyAppointments,
     getMyAppointmentsDev,
@@ -202,6 +252,8 @@ exports.appointmentController = {
     updateAppointment,
     updateAppointmentStatus,
     updatePaymentStatus,
+    rescheduleAppointment,
+    cancelAppointmentWithRefund,
     deleteAppointment,
     getAppointmentStats,
 };

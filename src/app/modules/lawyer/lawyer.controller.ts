@@ -4,6 +4,7 @@ import sendResponse from "../../utils/sendResponse";
 import { StatusCodes } from "http-status-codes";
 import { JwtPayload } from "jsonwebtoken";
 import { lawyerServices } from "./lawyer.service";
+import { LawyerProfileModel } from "./lawyer.model";
 
 
 
@@ -169,7 +170,7 @@ const adminDeleteLawyer = catchAsync(async (req: Request, res: Response) => {
 const adminUpdateLawyer = catchAsync(async (req: Request, res: Response) => {
   // Parse nested JSON strings from FormData
   const body = { ...req.body };
-  const jsonFields = ['profile_Details', 'lawyerDetails', 'specialties', 'categories', 'call_fees', 'video_fees', 'educations'];
+  const jsonFields = ['profile_Details', 'lawyerDetails', 'specialties', 'categories', 'call_fees', 'video_fees', 'educations', 'qualifications', 'chambers', 'work_experience', 'court_districts', 'payoutMethod'];
   jsonFields.forEach((field) => {
     if (typeof body[field] === 'string') {
       try { body[field] = JSON.parse(body[field]); } catch (_) {}
@@ -195,6 +196,19 @@ const adminUpdateLawyer = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const adminSetPlatformFee = catchAsync(async (req: Request, res: Response) => {
+  const { platform_fee_percentage } = req.body;
+  if (platform_fee_percentage === undefined || platform_fee_percentage < 0 || platform_fee_percentage > 100) {
+    return sendResponse(res, { success: false, statusCode: StatusCodes.BAD_REQUEST, message: 'Invalid platform fee percentage (0-100)', data: null });
+  }
+  const result = await LawyerProfileModel.findByIdAndUpdate(
+    req.params.id,
+    { platform_fee_percentage },
+    { new: true }
+  ).select('platform_fee_percentage profile_Details');
+  sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: 'Platform fee updated', data: result });
+});
+
 export const lawyerController = {
   getPopularLawyers,
   getAllLawyers,
@@ -209,4 +223,5 @@ export const lawyerController = {
   adminVerifyLawyer,
   adminDeleteLawyer,
   adminUpdateLawyer,
+  adminSetPlatformFee,
 };

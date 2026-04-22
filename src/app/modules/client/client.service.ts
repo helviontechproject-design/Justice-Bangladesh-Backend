@@ -21,12 +21,23 @@ const updateClient = async (decodedUser: JwtPayload, ClientId: string, payload: 
   }
 
 
+  const updateData: Record<string, any> = {};
+
+  if (payload.profileInfo) {
+    Object.entries(payload.profileInfo as Record<string, any>).forEach(([key, value]) => {
+      updateData[`profileInfo.${key}`] = value;
+    });
+    delete payload.profileInfo;
+  }
+
+  Object.assign(updateData, payload);
+
   const updatedLawyer = await ClientProfileModel.findByIdAndUpdate(
     ClientId,
-    payload,
+    { $set: updateData },
     { new: true }
   );
- return updatedLawyer;
+  return updatedLawyer;
 };
 
 

@@ -24,7 +24,20 @@ const notFound_1 = __importDefault(require("./app/middlewares/notFound"));
 const node_cron_1 = __importDefault(require("node-cron"));
 const appointment_service_1 = require("./app/modules/appointment/appointment.service");
 const cors_1 = __importDefault(require("cors"));
+const redis_1 = require("redis");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ConnectRedis = require('connect-redis').RedisStore;
 const app = (0, express_1.default)();
+// Redis session store setup
+const redisClient = (0, redis_1.createClient)({
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+});
+redisClient.connect().catch(() => {
+    console.warn('[Session] Redis unavailable, falling back to MemoryStore');
+});
+const sessionStore = redisClient.isReady
+    ? new ConnectRedis({ client: redisClient, prefix: 'sess:' })
+    : undefined;
 // Allow multiple origins: production Vercel URL + local dev
 const allowedOrigins = [
     env_1.envVars.FRONTEND_URL,
@@ -49,9 +62,15 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 app.use((0, express_session_1.default)({
+    store: sessionStore,
     secret: env_1.envVars.EXPRESS_SESSION,
     resave: false,
     saveUninitialized: false,
+    cookie: {
+        secure: env_1.envVars.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
 }));
 app.use(passport_1.default.initialize());
 app.use(passport_1.default.session());

@@ -159,6 +159,12 @@ const createRequest = async (decodedUser: JwtPayload, payload: {
     if (!payload.bkashPaymentID) {
       throw new AppError(StatusCodes.BAD_REQUEST, 'bkashPaymentID is required');
     }
+
+    // Sanitize bkashPaymentID — only allow alphanumeric, hyphens and underscores
+    if (!/^[a-zA-Z0-9\-_]+$/.test(payload.bkashPaymentID)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid bkashPaymentID format');
+    }
+
     const executeRes = await BkashService.executePayment(payload.bkashPaymentID) as any;
     if (executeRes.transactionStatus !== 'Completed') {
       throw new AppError(StatusCodes.BAD_REQUEST, `Payment not completed: ${executeRes.statusMessage}`);

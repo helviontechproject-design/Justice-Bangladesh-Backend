@@ -123,7 +123,69 @@ class NotificationHelperClass {
   /**
    * Notify both client and lawyer when appointment is cancelled
    */
-  async notifyAppointmentCancelled(appointment: any, cancelledByUserId: string): Promise<void> {
+  async sendAppointmentReminder(appointment: any, timeLabel: string): Promise<void> {
+    const lawyerName = appointment.lawyerId?.profile_Details?.fast_name || 'your lawyer';
+    const clientName = appointment.clientId?.profileInfo?.fast_name || 'your client';
+    const appointmentDate = appointment.appointmentDate
+      ? new Date(appointment.appointmentDate).toLocaleDateString()
+      : 'soon';
+
+    const notifications: CreateNotificationData[] = [
+      {
+        userId: appointment.clientId._id || appointment.clientId,
+        type: NotificationType.BOOKING_CONFIRMED,
+        title: `⏰ Appointment Reminder`,
+        message: `Reminder: Your appointment with ${lawyerName} is in ${timeLabel} on ${appointmentDate}.`,
+        relatedEntityId: appointment._id,
+        relatedEntityType: 'appointment',
+        priority: NotificationPriority.HIGH,
+      },
+      {
+        userId: appointment.lawyerId._id || appointment.lawyerId,
+        type: NotificationType.BOOKING_CONFIRMED,
+        title: `⏰ Appointment Reminder`,
+        message: `Reminder: Your appointment with ${clientName} is in ${timeLabel} on ${appointmentDate}.`,
+        relatedEntityId: appointment._id,
+        relatedEntityType: 'appointment',
+        priority: NotificationPriority.HIGH,
+      },
+    ];
+
+    await this.createBulkNotifications(notifications);
+  }
+
+  async notifyAppointmentRescheduled(appointment: any): Promise<void> {
+    const lawyerName = appointment.lawyerId?.profile_Details?.fast_name || 'your lawyer';
+    const clientName = appointment.clientId?.profileInfo?.fast_name || 'the client';
+    const newDate = appointment.appointmentDate
+      ? new Date(appointment.appointmentDate).toLocaleDateString()
+      : 'a new date';
+
+    const notifications: CreateNotificationData[] = [
+      {
+        userId: appointment.clientId._id || appointment.clientId,
+        type: NotificationType.BOOKING_CONFIRMED,
+        title: '🔄 Appointment Rescheduled',
+        message: `Your appointment with ${lawyerName} has been rescheduled to ${newDate} at ${appointment.selectedTime}.`,
+        relatedEntityId: appointment._id,
+        relatedEntityType: 'appointment',
+        priority: NotificationPriority.HIGH,
+      },
+      {
+        userId: appointment.lawyerId._id || appointment.lawyerId,
+        type: NotificationType.BOOKING_CONFIRMED,
+        title: '🔄 Appointment Rescheduled',
+        message: `${clientName} has rescheduled their appointment to ${newDate} at ${appointment.selectedTime}.`,
+        relatedEntityId: appointment._id,
+        relatedEntityType: 'appointment',
+        priority: NotificationPriority.HIGH,
+      },
+    ];
+
+    await this.createBulkNotifications(notifications);
+  }
+
+  async notifyAppointmentCancelled(appointment: any, cancelledByUserId: string, refundAmount?: number): Promise<void> {
     const clientName = appointment.clientId?.profileInfo?.name || 'The client';
     const lawyerName = appointment.lawyerId?.profileInfo?.name || 'The lawyer';
     
@@ -137,7 +199,7 @@ class NotificationHelperClass {
       type: NotificationType.BOOKING_CANCELLED,
       title: '🚫 Appointment Cancelled',
       message: cancelledByClient
-        ? `You have cancelled your appointment. ${appointment.payment_Status === 'PAID' ? 'Refund is being processed.' : ''}`
+        ? `You have cancelled your appointment. ${refundAmount && refundAmount > 0 ? `৳${refundAmount} refund will be processed to your wallet.` : appointment.payment_Status === 'PAID' ? 'Refund is being processed.' : ''}`
         : `Your appointment has been cancelled by ${lawyerName}.`,
       relatedEntityId: appointment._id,
       relatedEntityType: 'appointment',

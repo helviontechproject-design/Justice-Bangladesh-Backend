@@ -31,6 +31,10 @@ const getMe = (decodedUser) => __awaiter(void 0, void 0, void 0, function* () {
     if (((_a = me.phoneNo) === null || _a === void 0 ? void 0 : _a.isVerified) !== true) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'User not verified! Please verify your phone number.');
     }
+    const lawyerDoc = me.lawyer;
+    if (lawyerDoc) {
+        // debug removed
+    }
     return me;
 });
 const getAllUsers = (decodedUser, query) => __awaiter(void 0, void 0, void 0, function* () {

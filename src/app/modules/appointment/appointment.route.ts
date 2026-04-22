@@ -13,17 +13,19 @@ import { multerUpload } from '../../config/multer.config';
 
 const router = Router();
 
-// Create appointment (open for development)
+// Create appointment (authenticated CLIENT only)
 router.post(
   '/',
+  checkAuth(ERole.CLIENT),
   multerUpload.fields([{ name: 'documents', maxCount: 10 }]),
-  appointmentController.createAppointmentDev
+  appointmentController.createAppointment
 );
 
-// Get my appointments (open for development)
+// Get my appointments (authenticated)
 router.get(
   '/my-appointments',
-  appointmentController.getMyAppointmentsDev
+  checkAuth(...Object.values(ERole)),
+  appointmentController.getMyAppointments
 );
 
 // Get appointment statistics (SUPER_ADMIN only)
@@ -83,6 +85,12 @@ router.patch(
   '/:id/reschedule',
   checkAuth(ERole.CLIENT),
   appointmentController.rescheduleAppointment
+);
+
+// Dev: confirm payment (no real gateway)
+router.post(
+  '/:id/confirm-payment-dev',
+  appointmentController.confirmPaymentDev
 );
 
 // Cancel appointment with refund (CLIENT or LAWYER)

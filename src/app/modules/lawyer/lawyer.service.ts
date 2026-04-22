@@ -70,7 +70,7 @@ const getAllLawyers = async (query: Record<string, string>) => {
     .populate('userId', 'email profilePhoto isActive isOnline lastSeen')
     .populate('specialties', 'title')
     .populate('categories', 'name slug icon imageUrl _id')
-    .select('-walletId -withdrawals -reviews -work_experience -favorite_count -appointments_Count -services -lawyerDetails -chambers_Count -contactInfo -educations -totalReviews')
+    .select('profile_Details lawyerDetails per_consultation_fee avarage_rating totalReviews isPopular isSpecial isOnline userId specialties categories call_fees video_fees chamber_fee chamber_duration audioCall videoConsult inPerson')
 
   // Remove custom filters from query object for QueryBuilder
   const queryWithoutCustomFilters = { ...query };
@@ -164,8 +164,7 @@ const updateLawyer = async (decodedUser: JwtPayload, lawyerId: string, payload: 
   const flatSet: Record<string, unknown> = {};
   
   for (const [key, value] of Object.entries(processedPayload)) {
-    if (key === 'call_fees' || key === 'video_fees') {
-      // Handle arrays directly
+    if (key === 'call_fees' || key === 'video_fees' || key === 'payoutMethod') {
       directUpdates[key] = value;
     } else if (
       value !== null &&
@@ -173,12 +172,10 @@ const updateLawyer = async (decodedUser: JwtPayload, lawyerId: string, payload: 
       !Array.isArray(value) &&
       !(value instanceof Date)
     ) {
-      // Handle nested objects with dot notation
       for (const [nestedKey, nestedValue] of Object.entries(value as Record<string, unknown>)) {
         flatSet[`${key}.${nestedKey}`] = nestedValue;
       }
     } else {
-      // Handle primitive values
       flatSet[key] = value;
     }
   }
@@ -212,6 +209,14 @@ const getLawyerById = async (lawyerId: string) => {
 
   if (!lawyer) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Lawyer not found');
+  }
+
+  // Ensure extension_pricing exists with defaults for old documents
+  if (!lawyer.extension_pricing) {
+    await LawyerProfileModel.findByIdAndUpdate(lawyerId, {
+      $set: { extension_pricing: { enabled: false, per_minute_rate: 0, max_extension_minutes: 30 } }
+    });
+    (lawyer as any).extension_pricing = { enabled: false, per_minute_rate: 0, max_extension_minutes: 30 };
   }
 
   await LawyerProfileModel.findByIdAndUpdate(lawyerId, { $inc: { views: 1 } });
@@ -448,8 +453,7 @@ const adminUpdateLawyer = async (lawyerId: string, payload: Partial<ILawyerProfi
   const flatSet: Record<string, unknown> = {};
   
   for (const [key, value] of Object.entries(processedPayload)) {
-    if (key === 'call_fees' || key === 'video_fees') {
-      // Handle arrays directly
+    if (key === 'call_fees' || key === 'video_fees' || key === 'payoutMethod') {
       directUpdates[key] = value;
     } else if (
       value !== null &&
@@ -488,10 +492,6 @@ const adminUpdateLawyer = async (lawyerId: string, payload: Partial<ILawyerProfi
     .populate('userId', 'email profilePhoto isActive isVerified phoneNo')
     .populate('specialties', 'title')
     .populate('categories', 'name slug');
-};
-
-const adminGetLawyerProfile = async (lawyerId: string) => {
-  return LawyerProfileModel.findById(lawyerId).select('userId');
 };
 
 export const lawyerServices = {

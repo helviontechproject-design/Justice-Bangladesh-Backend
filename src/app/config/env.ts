@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 interface EnvConfig {
   PORT: string;
@@ -56,8 +57,17 @@ interface EnvConfig {
     FIREBASE_CLIENT_EMAIL: string;
     FIREBASE_CLIENT_ID: string;
   };
+  CORS_ORIGINS: string[];
   AGORA_APP_ID: string;
   AGORA_APP_CERTIFICATE: string;
+  BKASH: {
+    BASE_URL: string;
+    USERNAME: string;
+    PASSWORD: string;
+    APP_KEY: string;
+    APP_SECRET: string;
+    CALLBACK_URL: string;
+  };
 }
 
 const envVariables = (): EnvConfig => {
@@ -114,6 +124,13 @@ const envVariables = (): EnvConfig => {
     'FIREBASE_CLIENT_ID',
     'AGORA_APP_ID',
     'AGORA_APP_CERTIFICATE',
+    'BKASH_BASE_URL',
+    'BKASH_USERNAME',
+    'BKASH_PASSWORD',
+    'BKASH_APP_KEY',
+    'BKASH_APP_SECRET',
+    'BKASH_CALLBACK_URL',
+    'CORS_ORIGINS',
   ];
 
   requiredEnvVariables.forEach(key => {
@@ -182,8 +199,17 @@ const envVariables = (): EnvConfig => {
       FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL as string,
       FIREBASE_CLIENT_ID: process.env.FIREBASE_CLIENT_ID as string,
     },
+    CORS_ORIGINS: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()) : [],
     AGORA_APP_ID: process.env.AGORA_APP_ID as string,
     AGORA_APP_CERTIFICATE: process.env.AGORA_APP_CERTIFICATE as string,
+    BKASH: {
+      BASE_URL: process.env.BKASH_BASE_URL as string,
+      USERNAME: process.env.BKASH_USERNAME as string,
+      PASSWORD: process.env.BKASH_PASSWORD as string,
+      APP_KEY: process.env.BKASH_APP_KEY as string,
+      APP_SECRET: process.env.BKASH_APP_SECRET as string,
+      CALLBACK_URL: process.env.BKASH_CALLBACK_URL as string,
+    },
   };
 };
 
