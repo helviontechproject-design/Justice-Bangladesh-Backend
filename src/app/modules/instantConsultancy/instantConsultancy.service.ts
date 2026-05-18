@@ -95,6 +95,7 @@ const initPayment = async (decodedUser: JwtPayload, payload: {
   const onlineLawyers = await LawyerProfileModel.find({
     isOnline: true,
     categories: new Types.ObjectId(payload.categoryId),
+    instantConsultancy: true,
   });
 
   if (onlineLawyers.length === 0) {
@@ -178,6 +179,7 @@ const createRequest = async (decodedUser: JwtPayload, payload: {
   const onlineLawyers = await LawyerProfileModel.find({
     isOnline: true,
     categories: new Types.ObjectId(payload.categoryId),
+    instantConsultancy: true,
   }).populate('userId', '_id fcmTokens fcmToken');
 
   if (onlineLawyers.length === 0) {

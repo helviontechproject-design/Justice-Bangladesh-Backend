@@ -48,6 +48,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://10.0.2.2:5000',
     process.env.ADMIN_URL,
+    ...env_1.envVars.CORS_ORIGINS,
 ].filter(Boolean);
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {

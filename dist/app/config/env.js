@@ -5,7 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.envVars = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const path_1 = __importDefault(require("path"));
+dotenv_1.default.config({ path: path_1.default.resolve(process.cwd(), '.env') });
 const envVariables = () => {
     // Core variables — server cannot start without these
     const requiredEnvVariables = [
@@ -65,6 +66,7 @@ const envVariables = () => {
         'BKASH_APP_KEY',
         'BKASH_APP_SECRET',
         'BKASH_CALLBACK_URL',
+        'CORS_ORIGINS',
     ];
     requiredEnvVariables.forEach(key => {
         if (!process.env[key]) {
@@ -130,6 +132,7 @@ const envVariables = () => {
             FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
             FIREBASE_CLIENT_ID: process.env.FIREBASE_CLIENT_ID,
         },
+        CORS_ORIGINS: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()) : [],
         AGORA_APP_ID: process.env.AGORA_APP_ID,
         AGORA_APP_CERTIFICATE: process.env.AGORA_APP_CERTIFICATE,
         BKASH: {

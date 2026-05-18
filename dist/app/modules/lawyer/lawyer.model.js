@@ -98,6 +98,7 @@ const LawyerProfileSchema = new mongoose_1.Schema({
     inPerson: { type: Boolean, default: false },
     videoConsult: { type: Boolean, default: false },
     audioCall: { type: Boolean, default: false },
+    instantConsultancy: { type: Boolean, default: true },
     call_fees: [{ minutes: { type: Number }, fee: { type: Number }, _id: false }],
     video_fees: [{ minutes: { type: Number }, fee: { type: Number }, _id: false }],
     chamber_fee: { type: Number, default: 0 },

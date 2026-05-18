@@ -103,6 +103,7 @@ export interface ILawyerProfile {
   inPerson?: boolean;
   videoConsult?: boolean;
   audioCall?: boolean;
+  instantConsultancy?: boolean;
   call_fees?: CallFeeSlot[];
   video_fees?: CallFeeSlot[];
   chamber_fee?: number;

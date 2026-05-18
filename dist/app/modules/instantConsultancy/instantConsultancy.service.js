@@ -87,6 +87,7 @@ const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, 
     const onlineLawyers = yield lawyer_model_1.LawyerProfileModel.find({
         isOnline: true,
         categories: new mongoose_1.Types.ObjectId(payload.categoryId),
+        instantConsultancy: true,
     });
     if (onlineLawyers.length === 0) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'No available lawyers for this category right now. Please try again later.');
@@ -151,6 +152,7 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
     const onlineLawyers = yield lawyer_model_1.LawyerProfileModel.find({
         isOnline: true,
         categories: new mongoose_1.Types.ObjectId(payload.categoryId),
+        instantConsultancy: true,
     }).populate('userId', '_id fcmTokens fcmToken');
     if (onlineLawyers.length === 0) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'No available lawyers for this category right now. Please try again later.');
