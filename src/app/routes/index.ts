@@ -20,6 +20,7 @@ import { messageRoute } from '../modules/chat/message/message.route';
 import { conversationRoute } from '../modules/chat/conversation/conversation.route';
 import { payoutRoute } from '../modules/payout/payout.route';
 import { blogRoute } from '../modules/blog/blog.route';
+import { videoRoute } from '../modules/video/video.route';
 import { agoraRoute } from '../modules/agora/agora.route';
 import { faqRoute } from '../modules/faq/faq.route';
 import { policyRoute } from '../modules/policy/policy.route';
@@ -111,6 +112,10 @@ const moduleRoutes = [
   {
     path: '/blog',
     route: blogRoute
+  },
+  {
+    path: '/video',
+    route: videoRoute
   },
   {
     path: '/agora',

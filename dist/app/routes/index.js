@@ -23,6 +23,7 @@ const message_route_1 = require("../modules/chat/message/message.route");
 const conversation_route_1 = require("../modules/chat/conversation/conversation.route");
 const payout_route_1 = require("../modules/payout/payout.route");
 const blog_route_1 = require("../modules/blog/blog.route");
+const video_route_1 = require("../modules/video/video.route");
 const agora_route_1 = require("../modules/agora/agora.route");
 const faq_route_1 = require("../modules/faq/faq.route");
 const policy_route_1 = require("../modules/policy/policy.route");
@@ -112,6 +113,10 @@ const moduleRoutes = [
     {
         path: '/blog',
         route: blog_route_1.blogRoute
+    },
+    {
+        path: '/video',
+        route: video_route_1.videoRoute
     },
     {
         path: '/agora',
