@@ -29,8 +29,6 @@ router.patch('/:id/payment-status', (0, checkAuth_1.checkAuth)(user_interface_1.
 router.delete('/:id', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), appointment_controller_1.appointmentController.deleteAppointment);
 // Reschedule appointment (CLIENT only)
 router.patch('/:id/reschedule', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), appointment_controller_1.appointmentController.rescheduleAppointment);
-// Dev: confirm payment (no real gateway)
-router.post('/:id/confirm-payment-dev', appointment_controller_1.appointmentController.confirmPaymentDev);
 // Cancel appointment with refund (CLIENT or LAWYER)
 router.post('/:id/cancel', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT, user_interface_1.ERole.LAWYER), appointment_controller_1.appointmentController.cancelAppointmentWithRefund);
 // // lawyer dashboard appointment api

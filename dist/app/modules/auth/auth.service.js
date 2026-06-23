@@ -20,13 +20,13 @@ const user_interface_1 = require("../user/user.interface");
 const mongoose_1 = __importDefault(require("mongoose"));
 const user_model_1 = require("../user/user.model");
 const lawyer_model_1 = require("../lawyer/lawyer.model");
-const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../../config/env");
 const firebase_1 = require("../../config/firebase");
 const createTokens_1 = require("../../utils/createTokens");
 const client_model_1 = require("../client/client.model");
 const wallet_model_1 = require("../wallet/wallet.model");
 const notification_helper_1 = require("../notification/notification.helper");
+const sms_service_1 = require("../../services/sms.service");
 const OTP_ENABLED = true;
 const OTP_EXPIRY_MINUTES = 5;
 const TEST_OTP = '5805';
@@ -47,34 +47,33 @@ const normalizePhone = (phone) => {
     }
     return value;
 };
-// Skip WhatsApp in dev — just save OTP to DB silently
-const sendWhatsAppOTP = (phone, otp) => __awaiter(void 0, void 0, void 0, function* () {
+/**
+ * Send OTP via SMS Bangladesh
+ * In development mode, logs OTP to console
+ * In production, sends actual SMS
+ */
+const sendOTPViaSMS = (phone, otp) => __awaiter(void 0, void 0, void 0, function* () {
     if (process.env.NODE_ENV !== 'production') {
         console.log(`[DEV] OTP for ${phone}: ${otp} (test code: ${TEST_OTP})`);
         return;
     }
-    if (!env_1.envVars.META_WHATSAPP.ACCESS_TOKEN || !env_1.envVars.META_WHATSAPP.PHONE_NUMBER_ID) {
-        console.warn(`[OTP] WhatsApp not configured. OTP for ${phone}: ${otp}`);
+    // Check if SMS service is configured
+    if (!sms_service_1.smsService.isConfigured()) {
+        console.warn(`[OTP] SMS Bangladesh not configured. OTP for ${phone}: ${otp}`);
         return;
     }
-    const formattedPhone = phone.startsWith('+') ? phone : `+88${phone}`;
     try {
-        yield axios_1.default.post(`https://graph.facebook.com/v19.0/${env_1.envVars.META_WHATSAPP.PHONE_NUMBER_ID}/messages`, {
-            messaging_product: 'whatsapp',
-            to: formattedPhone,
-            type: 'text',
-            text: {
-                body: `আপনার Justice Bangladesh যাচাইকরণ কোড: *${otp}*\n\nএই কোডটি ${OTP_EXPIRY_MINUTES} মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে শেয়ার করবেন না।`,
-            },
-        }, {
-            headers: {
-                Authorization: `Bearer ${env_1.envVars.META_WHATSAPP.ACCESS_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
-        });
+        const sent = yield sms_service_1.smsService.sendOTP(phone, otp);
+        if (sent) {
+            console.log(`[SMS] OTP sent successfully to ${phone}`);
+        }
+        else {
+            console.error(`[SMS] Failed to send OTP to ${phone}`);
+            // Don't throw error - allow user to proceed with TEST_OTP in dev
+        }
     }
     catch (err) {
-        console.error(`[OTP] WhatsApp send failed for ${phone}:`, err);
+        console.error(`[SMS] Error sending OTP to ${phone}:`, err);
     }
 });
 const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -150,14 +149,14 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             walletId: walletId,
         }, { new: true, session });
         yield user_model_1.UserModel.findByIdAndUpdate(userId, { lawyer: lawyerId }, { new: true, session });
-        // Send WhatsApp OTP
+        // Send SMS OTP
         if (OTP_ENABLED) {
             const otp = generateOTP();
             const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
             yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
             yield session.commitTransaction();
             session.endSession();
-            yield sendWhatsAppOTP(phone, otp);
+            yield sendOTPViaSMS(phone, otp);
         }
         else {
             yield session.commitTransaction();
@@ -166,7 +165,7 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         return {
             success: true,
             message: OTP_ENABLED
-                ? 'Lawyer account created successfully. Verification code sent via WhatsApp!'
+                ? 'Lawyer account created successfully. Verification code sent via SMS!'
                 : 'Lawyer account created successfully.',
             data: { userId, lawyerId },
         };
@@ -228,14 +227,14 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         ], { session });
         const clientId = ClientProfile[0]._id;
         yield user_model_1.UserModel.findByIdAndUpdate(userId, { client: clientId }, { new: true, session });
-        // Send WhatsApp OTP
+        // Send SMS OTP
         if (OTP_ENABLED) {
             const otp = generateOTP();
             const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
             yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
             yield session.commitTransaction();
             session.endSession();
-            yield sendWhatsAppOTP(phone, otp);
+            yield sendOTPViaSMS(phone, otp);
         }
         else {
             yield session.commitTransaction();
@@ -244,7 +243,7 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         return {
             success: true,
             message: OTP_ENABLED
-                ? 'Client account created successfully. Verification code sent via WhatsApp!'
+                ? 'Client account created successfully. Verification code sent via SMS!'
                 : 'Client account created successfully.',
             data: { userId, clientId },
         };
@@ -363,14 +362,14 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (user.isActive === user_interface_1.EIsActive.BLOCKED) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.FORBIDDEN, 'Your account has been blocked.');
     }
-    // Send WhatsApp OTP for login
+    // Send SMS OTP for login
     if (OTP_ENABLED) {
         const otp = generateOTP();
         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
         yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-        yield sendWhatsAppOTP(phone, otp);
+        yield sendOTPViaSMS(phone, otp);
         return {
-            message: 'Verification code sent via WhatsApp!',
+            message: 'Verification code sent via SMS!',
             role: user.role,
             userId: user._id,
         };
@@ -401,10 +400,10 @@ const resendOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-    yield sendWhatsAppOTP(phone, otp);
+    yield sendOTPViaSMS(phone, otp);
     return {
         success: true,
-        message: "New verification code sent via WhatsApp!",
+        message: "New verification code sent via SMS!",
     };
 });
 exports.resendOTP = resendOTP;
@@ -435,12 +434,12 @@ const addPhoneNo = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, f
         const otp = generateOTP();
         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
         yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-        yield sendWhatsAppOTP(normalizePhone((_b = payload.phone) === null || _b === void 0 ? void 0 : _b.toString()), otp);
+        yield sendOTPViaSMS(normalizePhone((_b = payload.phone) === null || _b === void 0 ? void 0 : _b.toString()), otp);
     }
     return {
         success: true,
         message: OTP_ENABLED
-            ? 'OTP sent successfully via WhatsApp!'
+            ? 'OTP sent successfully via SMS!'
             : 'Phone number updated successfully.',
     };
 });

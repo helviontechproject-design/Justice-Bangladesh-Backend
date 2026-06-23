@@ -28,9 +28,10 @@ const sendMail_1 = require("../../utils/sendMail");
 const appointment_interface_1 = require("../appointment/appointment.interface");
 const availability_model_1 = require("../availability/availability.model");
 const notification_model_1 = require("../notification/notification.model");
-const sslCommerz_service_1 = require("./sslCommerz/sslCommerz.service");
+const paystation_service_1 = require("./paystation/paystation.service");
 const notification_helper_1 = require("../notification/notification.helper");
 const reCreatePayment = (id, decodedUser) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     if (!decodedUser.userId) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.UNAUTHORIZED, 'Unauthorized user');
     }
@@ -67,25 +68,29 @@ const reCreatePayment = (id, decodedUser) => __awaiter(void 0, void 0, void 0, f
     if (!lawyer) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Lawyer not found');
     }
-    // Prepare SSL payload
+    // Prepare PayStation payload
     const userAddress = client.profileInfo.street_address || client.profileInfo.district || 'Bangladesh';
     const userEmail = client.profileInfo.email || 'demo@gmail.com';
     const userPhoneNumber = client.profileInfo.phone;
     const userName = client.profileInfo.fast_name + ' ' + client.profileInfo.last_name;
-    const sslPayload = {
-        address: userAddress,
-        email: userEmail,
-        phoneNumber: userPhoneNumber,
-        name: userName,
-        amount: existingPayment.amount,
-        transactionId: existingPayment.transactionId,
+    const paystationPayload = {
+        invoice_number: existingPayment.transactionId,
+        currency: 'BDT',
+        payment_amount: existingPayment.amount,
+        reference: `Appointment-${appointment._id}`,
+        cust_name: userName,
+        cust_phone: userPhoneNumber,
+        cust_email: userEmail,
+        cust_address: userAddress,
+        callback_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?txn=${existingPayment.transactionId}`,
+        checkout_items: `Lawyer Consultation - ${((_a = lawyer.profile_Details) === null || _a === void 0 ? void 0 : _a.fast_name) || ''} ${((_b = lawyer.profile_Details) === null || _b === void 0 ? void 0 : _b.last_name) || ''}`,
     };
     console.log('🔄 Regenerating payment link for:', existingPayment.transactionId);
     // Generate new payment link
-    const sslPayment = yield sslCommerz_service_1.SSLService.sslPaymentInit(sslPayload);
+    const paystationPayment = yield paystation_service_1.PayStationService.initiatePayment(paystationPayload);
     return {
         appointmentId: appointment._id,
-        paymentUrl: (sslPayment === null || sslPayment === void 0 ? void 0 : sslPayment.GatewayPageURL) || (sslPayment === null || sslPayment === void 0 ? void 0 : sslPayment.gatewayPageURL) || null,
+        paymentUrl: (paystationPayment === null || paystationPayment === void 0 ? void 0 : paystationPayment.payment_url) || null,
     };
 });
 const successPayment = (query) => __awaiter(void 0, void 0, void 0, function* () {
@@ -156,7 +161,7 @@ const successPayment = (query) => __awaiter(void 0, void 0, void 0, function* ()
             clientName: (client === null || client === void 0 ? void 0 : client.profileInfo.fast_name) + ' ' +
                 (client === null || client === void 0 ? void 0 : client.profileInfo.last_name),
             clientEmail: client === null || client === void 0 ? void 0 : client.profileInfo.email,
-            paymentMethod: 'sslCommerz',
+            paymentMethod: 'PayStation',
             totalAmount: updatedPayment.amount,
             status: payment_interface_1.PaymentStatus.PAID,
             approvedBy: 'Admin',

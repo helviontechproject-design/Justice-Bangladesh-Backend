@@ -25,7 +25,7 @@ export const seedPlatformSettings = async () => {
       payment: {
         currency: 'BDT',
         taxPercentage: 0,
-        gateway: 'SSLCOMMERZ' as const,
+        gateway: 'PAYSTATION' as const,
       },
 
       general: {

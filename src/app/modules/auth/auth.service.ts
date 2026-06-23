@@ -5,7 +5,6 @@ import { EIsActive, ERole, IUserBasicInfo } from "../user/user.interface";
 import mongoose from "mongoose";
 import { UserModel } from "../user/user.model";
 import { LawyerProfileModel } from "../lawyer/lawyer.model";
-import axios from "axios";
 import { envVars } from "../../config/env";
 import { admin } from "../../config/firebase";
 import {
@@ -16,6 +15,7 @@ import { ClientProfileModel } from "../client/client.model";
 import { JwtPayload } from "jsonwebtoken";
 import { WalletModel } from "../wallet/wallet.model";
 import { NotificationHelper } from "../notification/notification.helper";
+import { smsService } from "../../services/sms.service";
 
 const OTP_ENABLED = true;
 const OTP_EXPIRY_MINUTES = 5;
@@ -38,37 +38,33 @@ const normalizePhone = (phone?: string) => {
   return value;
 };
 
-// Skip WhatsApp in dev — just save OTP to DB silently
-const sendWhatsAppOTP = async (phone: string, otp: string) => {
+/**
+ * Send OTP via SMS Bangladesh
+ * In development mode, logs OTP to console
+ * In production, sends actual SMS
+ */
+const sendOTPViaSMS = async (phone: string, otp: string) => {
   if (process.env.NODE_ENV !== 'production') {
     console.log(`[DEV] OTP for ${phone}: ${otp} (test code: ${TEST_OTP})`);
     return;
   }
-  if (!envVars.META_WHATSAPP.ACCESS_TOKEN || !envVars.META_WHATSAPP.PHONE_NUMBER_ID) {
-    console.warn(`[OTP] WhatsApp not configured. OTP for ${phone}: ${otp}`);
+
+  // Check if SMS service is configured
+  if (!smsService.isConfigured()) {
+    console.warn(`[OTP] SMS Bangladesh not configured. OTP for ${phone}: ${otp}`);
     return;
   }
-  const formattedPhone = phone.startsWith('+') ? phone : `+88${phone}`;
+
   try {
-    await axios.post(
-      `https://graph.facebook.com/v19.0/${envVars.META_WHATSAPP.PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: 'whatsapp',
-        to: formattedPhone,
-        type: 'text',
-        text: {
-          body: `আপনার Justice Bangladesh যাচাইকরণ কোড: *${otp}*\n\nএই কোডটি ${OTP_EXPIRY_MINUTES} মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে শেয়ার করবেন না।`,
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${envVars.META_WHATSAPP.ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
+    const sent = await smsService.sendOTP(phone, otp);
+    if (sent) {
+      console.log(`[SMS] OTP sent successfully to ${phone}`);
+    } else {
+      console.error(`[SMS] Failed to send OTP to ${phone}`);
+      // Don't throw error - allow user to proceed with TEST_OTP in dev
+    }
   } catch (err) {
-    console.error(`[OTP] WhatsApp send failed for ${phone}:`, err);
+    console.error(`[SMS] Error sending OTP to ${phone}:`, err);
   }
 };
 
@@ -182,14 +178,14 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
       { new: true, session },
     );
 
-    // Send WhatsApp OTP
+    // Send SMS OTP
     if (OTP_ENABLED) {
       const otp = generateOTP();
       const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
       await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
       await session.commitTransaction();
       session.endSession();
-      await sendWhatsAppOTP(phone, otp);
+      await sendOTPViaSMS(phone, otp);
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -198,7 +194,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
     return {
       success: true,
       message: OTP_ENABLED
-        ? 'Lawyer account created successfully. Verification code sent via WhatsApp!'
+        ? 'Lawyer account created successfully. Verification code sent via SMS!'
         : 'Lawyer account created successfully.',
       data: { userId, lawyerId },
     };
@@ -286,14 +282,14 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
       { new: true, session },
     );
 
-    // Send WhatsApp OTP
+    // Send SMS OTP
     if (OTP_ENABLED) {
       const otp = generateOTP();
       const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
       await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
       await session.commitTransaction();
       session.endSession();
-      await sendWhatsAppOTP(phone, otp);
+      await sendOTPViaSMS(phone, otp);
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -302,7 +298,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
     return {
       success: true,
       message: OTP_ENABLED
-        ? 'Client account created successfully. Verification code sent via WhatsApp!'
+        ? 'Client account created successfully. Verification code sent via SMS!'
         : 'Client account created successfully.',
       data: { userId, clientId },
     };
@@ -436,14 +432,14 @@ export const userLogin = async (payload: { phone: string }) => {
     throw new AppError(StatusCodes.FORBIDDEN, 'Your account has been blocked.');
   }
 
-  // Send WhatsApp OTP for login
+  // Send SMS OTP for login
   if (OTP_ENABLED) {
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-    await sendWhatsAppOTP(phone, otp);
+    await sendOTPViaSMS(phone, otp);
     return {
-      message: 'Verification code sent via WhatsApp!',
+      message: 'Verification code sent via SMS!',
       role: user.role,
       userId: user._id,
     };
@@ -477,11 +473,11 @@ export const resendOTP = async (payload: { phone: string }) => {
   const otp = generateOTP();
   const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-  await sendWhatsAppOTP(phone, otp);
+  await sendOTPViaSMS(phone, otp);
 
   return {
     success: true,
-    message: "New verification code sent via WhatsApp!",
+    message: "New verification code sent via SMS!",
   };
 };
 
@@ -518,13 +514,13 @@ export const addPhoneNo = async (
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
-    await sendWhatsAppOTP(normalizePhone(payload.phone?.toString()), otp);
+    await sendOTPViaSMS(normalizePhone(payload.phone?.toString()), otp);
   }
 
   return {
     success: true,
     message: OTP_ENABLED
-      ? 'OTP sent successfully via WhatsApp!'
+      ? 'OTP sent successfully via SMS!'
       : 'Phone number updated successfully.',
   };
 };

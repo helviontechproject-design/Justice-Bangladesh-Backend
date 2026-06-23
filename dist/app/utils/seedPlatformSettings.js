@@ -32,7 +32,7 @@ const seedPlatformSettings = () => __awaiter(void 0, void 0, void 0, function* (
             payment: {
                 currency: 'BDT',
                 taxPercentage: 0,
-                gateway: 'SSLCOMMERZ',
+                gateway: 'PAYSTATION',
             },
             general: {
                 platformName: 'lawfirm',

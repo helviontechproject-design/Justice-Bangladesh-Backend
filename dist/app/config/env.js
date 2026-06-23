@@ -35,23 +35,20 @@ const envVariables = () => {
         'SMTP_HOST',
         'SMTP_USER',
         'SMTP_FROM',
-        'SSL_STORE_ID',
-        'SSL_STORE_PASS',
-        'SSL_PAYMENT_API',
-        'SSL_VALIDATION_API',
-        'SSL_SUCCESS_FRONTEND_URL',
-        'SSL_FAIL_FRONTEND_URL',
-        'SSL_CANCEL_FRONTEND_URL',
-        'SSL_SUCCESS_BACKEND_URL',
-        'SSL_FAIL_BACKEND_URL',
-        'SSL_CANCEL_BACKEND_URL',
-        'SSL_IPN_URL',
         'CLOUDINARY_CLOUD_NAME',
         'CLOUDINARY_API_KEY',
         'CLOUDINARY_API_SECRET',
         // OTP disabled temporarily for development — Twilio vars optional
         'META_WHATSAPP_ACCESS_TOKEN',
         'META_WHATSAPP_PHONE_NUMBER_ID',
+        // SMS Bangladesh for OTP
+        'SMS_BANGLADESH_USERNAME',
+        'SMS_BANGLADESH_PASSWORD',
+        'SMS_BANGLADESH_SENDER_ID',
+        // PayStation Payment Gateway
+        'PAYSTATION_BASE_URL',
+        'PAYSTATION_MERCHANT_ID',
+        'PAYSTATION_PASSWORD',
         // Firebase optional for development
         'FIREBASE_PROJECT_ID',
         'FIREBASE_PRIVATE_KEY_ID',
@@ -60,12 +57,9 @@ const envVariables = () => {
         'FIREBASE_CLIENT_ID',
         'AGORA_APP_ID',
         'AGORA_APP_CERTIFICATE',
-        'BKASH_BASE_URL',
-        'BKASH_USERNAME',
-        'BKASH_PASSWORD',
-        'BKASH_APP_KEY',
-        'BKASH_APP_SECRET',
-        'BKASH_CALLBACK_URL',
+        'PAYSTATION_BASE_URL',
+        'PAYSTATION_MERCHANT_ID',
+        'PAYSTATION_PASSWORD',
         'CORS_ORIGINS',
     ];
     requiredEnvVariables.forEach(key => {
@@ -103,19 +97,6 @@ const envVariables = () => {
             SMTP_HOST: process.env.SMTP_HOST,
             SMTP_FROM: process.env.SMTP_FROM,
         },
-        SSL: {
-            STORE_ID: process.env.SSL_STORE_ID,
-            STORE_PASS: process.env.SSL_STORE_PASS,
-            SSL_PAYMENT_API: process.env.SSL_PAYMENT_API,
-            SSL_VALIDATION_API: process.env.SSL_VALIDATION_API,
-            SSL_SUCCESS_FRONTEND_URL: process.env.SSL_SUCCESS_FRONTEND_URL,
-            SSL_FAIL_FRONTEND_URL: process.env.SSL_FAIL_FRONTEND_URL,
-            SSL_CANCEL_FRONTEND_URL: process.env.SSL_CANCEL_FRONTEND_URL,
-            SSL_SUCCESS_BACKEND_URL: process.env.SSL_SUCCESS_BACKEND_URL,
-            SSL_FAIL_BACKEND_URL: process.env.SSL_FAIL_BACKEND_URL,
-            SSL_CANCEL_BACKEND_URL: process.env.SSL_CANCEL_BACKEND_URL,
-            SSL_IPN_URL: process.env.SSL_IPN_URL,
-        },
         CLOUDINARY: {
             CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
             CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
@@ -124,6 +105,16 @@ const envVariables = () => {
         META_WHATSAPP: {
             ACCESS_TOKEN: process.env.META_WHATSAPP_ACCESS_TOKEN,
             PHONE_NUMBER_ID: process.env.META_WHATSAPP_PHONE_NUMBER_ID,
+        },
+        SMS_BANGLADESH: {
+            USERNAME: process.env.SMS_BANGLADESH_USERNAME,
+            PASSWORD: process.env.SMS_BANGLADESH_PASSWORD,
+            SENDER_ID: process.env.SMS_BANGLADESH_SENDER_ID,
+        },
+        PAYSTATION: {
+            BASE_URL: process.env.PAYSTATION_BASE_URL,
+            MERCHANT_ID: process.env.PAYSTATION_MERCHANT_ID,
+            PASSWORD: process.env.PAYSTATION_PASSWORD,
         },
         FIREBASE: {
             FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
@@ -135,14 +126,6 @@ const envVariables = () => {
         CORS_ORIGINS: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()) : [],
         AGORA_APP_ID: process.env.AGORA_APP_ID,
         AGORA_APP_CERTIFICATE: process.env.AGORA_APP_CERTIFICATE,
-        BKASH: {
-            BASE_URL: process.env.BKASH_BASE_URL,
-            USERNAME: process.env.BKASH_USERNAME,
-            PASSWORD: process.env.BKASH_PASSWORD,
-            APP_KEY: process.env.BKASH_APP_KEY,
-            APP_SECRET: process.env.BKASH_APP_SECRET,
-            CALLBACK_URL: process.env.BKASH_CALLBACK_URL,
-        },
     };
 };
 exports.envVars = envVariables();

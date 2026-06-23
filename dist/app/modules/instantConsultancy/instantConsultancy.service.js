@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -23,7 +56,7 @@ const instantConsultancy_model_1 = require("./instantConsultancy.model");
 const instantConsultancy_interface_1 = require("./instantConsultancy.interface");
 const env_1 = require("../../config/env");
 const fcm_1 = require("../../utils/fcm");
-const bkash_service_1 = require("../bkash/bkash.service");
+// import { BkashService } from '../bkash/bkash.service'; // Removed: Using PayStation now
 const REQUEST_EXPIRE_MS = 120000;
 const pendingRequests = new Map();
 const expirePendingRequests = () => __awaiter(void 0, void 0, void 0, function* () {
@@ -73,7 +106,7 @@ const updateSettings = (payload) => __awaiter(void 0, void 0, void 0, function* 
     return settings;
 });
 const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    console.log('📝 Init Payment Request:', { categoryId: payload.categoryId, itemId: payload.itemId });
     if (!PAYMENT_ENABLED) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_IMPLEMENTED, 'Payment is currently disabled. Use /request directly.');
     }
@@ -92,37 +125,76 @@ const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, 
     if (onlineLawyers.length === 0) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'No available lawyers for this category right now. Please try again later.');
     }
-    const orderId = `IC-${Date.now()}-${client._id.toString().slice(-4)}`;
-    const bkashRes = yield bkash_service_1.BkashService.createPayment({
-        amount: String(settings.fee),
-        orderId,
-        merchantInvoiceNumber: orderId,
-    });
-    if (bkashRes.statusCode !== '0000') {
-        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, bkashRes.statusMessage || 'bKash payment init failed');
+    // Determine fee: Use item fee if item selected, otherwise use settings default fee
+    let consultationFee = settings.fee;
+    let itemName = 'Instant Legal Consultancy';
+    if (payload.itemId) {
+        console.log('🔍 Looking up item fee for itemId:', payload.itemId);
+        const item = yield instantConsultancy_model_1.InstantConsultancyItemModel.findById(payload.itemId);
+        if (item && item.isActive) {
+            consultationFee = item.fee;
+            itemName = item.name;
+            console.log('✅ Item found - Using item fee:', consultationFee, 'Name:', itemName);
+        }
+        else {
+            console.log('⚠️ Item not found or inactive - Using default fee:', consultationFee);
+        }
     }
-    // Store pending meta in memory until payment is executed
-    pendingRequests.set(orderId, {
-        channelName: '',
-        appointmentType: payload.appointmentType || 'Audio Call',
-        clientName: `${((_a = client.profileInfo) === null || _a === void 0 ? void 0 : _a.fast_name) || ''} ${((_b = client.profileInfo) === null || _b === void 0 ? void 0 : _b.last_name) || ''}`.trim() || 'Client',
-        categoryId: payload.categoryId,
-        appId: env_1.envVars.AGORA_APP_ID || '',
-        clientToken: '',
-        createdAt: Date.now(),
-    });
-    return {
-        bkashURL: bkashRes.bkashURL,
-        paymentID: bkashRes.paymentID,
-        orderId,
-        fee: settings.fee,
-        note: payload.note,
-        documentUrls: payload.documentUrls,
-        appointmentType: payload.appointmentType || 'Audio Call',
-    };
+    else {
+        console.log('ℹ️ No itemId provided - Using default settings fee:', consultationFee);
+    }
+    const orderId = `IC-${Date.now()}-${client._id.toString().slice(-4)}`;
+    // Create PayStation payment
+    try {
+        const userAddress = client.profileInfo.street_address ||
+            client.profileInfo.district ||
+            'Bangladesh';
+        const userEmail = client.profileInfo.email || 'demo@gmail.com';
+        const userPhoneNumber = client.profileInfo.phone;
+        const userName = `${client.profileInfo.fast_name || ''} ${client.profileInfo.last_name || ''}`.trim() || 'Client';
+        const paystationPayload = {
+            invoice_number: orderId,
+            currency: 'BDT',
+            payment_amount: consultationFee, // Use determined fee (item fee or default)
+            reference: `Instant-Consultancy-${orderId}`,
+            cust_name: userName,
+            cust_phone: userPhoneNumber,
+            cust_email: userEmail,
+            cust_address: userAddress,
+            callback_url: `${process.env.FRONTEND_URL || 'http://192.168.0.104:3000'}/instant-consultancy/callback?orderId=${orderId}`,
+            checkout_items: itemName, // Use item name if available
+        };
+        console.log('💳 Initiating PayStation payment for Instant Consultancy:', orderId);
+        const { PayStationService } = yield Promise.resolve().then(() => __importStar(require('../payment/paystation/paystation.service')));
+        const paystationPayment = yield PayStationService.initiatePayment(paystationPayload);
+        // Store pending meta in memory until payment is executed
+        pendingRequests.set(orderId, {
+            channelName: '',
+            appointmentType: payload.appointmentType || 'Audio Call',
+            clientName: userName,
+            categoryId: payload.categoryId,
+            appId: env_1.envVars.AGORA_APP_ID || '',
+            clientToken: '',
+            createdAt: Date.now(),
+        });
+        console.log('✅ PayStation payment URL generated for Instant Consultancy');
+        return {
+            paymentUrl: (paystationPayment === null || paystationPayment === void 0 ? void 0 : paystationPayment.payment_url) || null,
+            paymentID: orderId,
+            orderId,
+            fee: consultationFee, // Return actual fee being charged
+            note: payload.note,
+            documentUrls: payload.documentUrls,
+            appointmentType: payload.appointmentType || 'Audio Call',
+        };
+    }
+    catch (error) {
+        console.error('❌ PayStation payment initiation failed:', error);
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, `Failed to initiate payment: ${error.message}`);
+    }
 });
-// Set to true when bKash is ready to go live
-const PAYMENT_ENABLED = false;
+// Production mode - PayStation payment is ENABLED
+const PAYMENT_ENABLED = true;
 const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const settings = yield getSettings();
@@ -132,20 +204,17 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
     const client = yield client_model_1.ClientProfileModel.findOne({ userId: decodedUser.userId });
     if (!client)
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Client profile not found');
-    let bkashTrxID;
-    if (PAYMENT_ENABLED) {
-        if (!payload.bkashPaymentID) {
-            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'bkashPaymentID is required');
+    let paystationTransactionId;
+    if (PAYMENT_ENABLED && payload.orderId) {
+        // Verify payment status with PayStation
+        const { PayStationService } = yield Promise.resolve().then(() => __importStar(require('../payment/paystation/paystation.service')));
+        const paymentStatus = yield PayStationService.checkTransactionStatus({
+            invoice_number: payload.orderId,
+        });
+        if (!paymentStatus.success || paymentStatus.status !== 'success') {
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Payment not completed or invalid');
         }
-        // Sanitize bkashPaymentID — only allow alphanumeric, hyphens and underscores
-        if (!/^[a-zA-Z0-9\-_]+$/.test(payload.bkashPaymentID)) {
-            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Invalid bkashPaymentID format');
-        }
-        const executeRes = yield bkash_service_1.BkashService.executePayment(payload.bkashPaymentID);
-        if (executeRes.transactionStatus !== 'Completed') {
-            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, `Payment not completed: ${executeRes.statusMessage}`);
-        }
-        bkashTrxID = executeRes.trxID;
+        paystationTransactionId = paymentStatus.transaction_id;
     }
     const clientName = `${((_a = client.profileInfo) === null || _a === void 0 ? void 0 : _a.fast_name) || ''} ${((_b = client.profileInfo) === null || _b === void 0 ? void 0 : _b.last_name) || ''}`.trim() || 'Client';
     const appointmentType = payload.appointmentType || 'Audio Call';
@@ -161,6 +230,14 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
     const clientToken = buildToken(channelName, 1);
     const appId = env_1.envVars.AGORA_APP_ID || '';
     const lawyerToken = buildToken(channelName, 2);
+    // Determine fee: Use item fee if item selected, otherwise use settings default fee
+    let consultationFee = settings.fee;
+    if (payload.itemId) {
+        const item = yield instantConsultancy_model_1.InstantConsultancyItemModel.findById(payload.itemId);
+        if (item && item.isActive) {
+            consultationFee = item.fee;
+        }
+    }
     const request = yield instantConsultancy_model_1.InstantConsultancyModel.create({
         clientId: client._id,
         categoryId: payload.categoryId,
@@ -169,10 +246,10 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
         documents: payload.documentUrls || [],
         channelName,
         status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
-        fee: settings.fee,
+        fee: consultationFee, // Use determined fee (item fee or default)
         paymentStatus: PAYMENT_ENABLED ? 'paid' : 'pending',
-        bkashPaymentID: payload.bkashPaymentID,
-        bkashTrxID,
+        paystationInvoiceNumber: payload.orderId,
+        paystationTransactionId,
     });
     const requestId = request._id.toString();
     pendingRequests.set(requestId, {
@@ -208,7 +285,7 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
         channelName,
         clientToken,
         appId,
-        fee: settings.fee,
+        fee: consultationFee, // Return actual fee being charged
         durationMinutes: settings.durationMinutes,
         status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
     };

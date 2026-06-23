@@ -58,8 +58,8 @@ const platformSettingsSchema = new Schema<IPlatformSettings>(
       },
       gateway: {
         type: String,
-        enum: ['SSLCOMMERZ', 'STRIPE', 'BOTH'],
-        default: 'SSLCOMMERZ',
+        enum: ['PAYSTATION', 'STRIPE', 'BOTH'],
+        default: 'PAYSTATION',
       },
     },
 

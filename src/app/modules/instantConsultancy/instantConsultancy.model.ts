@@ -17,8 +17,8 @@ const instantConsultancySchema = new Schema<IInstantConsultancy>(
     },
     fee: { type: Number, default: INSTANT_CONSULTATION_FEE },
     paymentStatus: { type: String, enum: ['pending', 'paid'], default: 'pending' },
-    bkashPaymentID: { type: String },
-    bkashTrxID: { type: String },
+    paystationInvoiceNumber: { type: String },
+    paystationTransactionId: { type: String },
   },
   { timestamps: true }
 );

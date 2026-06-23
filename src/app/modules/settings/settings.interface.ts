@@ -16,7 +16,7 @@ export interface IPlatformSettings {
   payment: {
     currency: string; // Default currency (BDT)
     taxPercentage: number; // VAT/Tax percentage
-    gateway: 'SSLCOMMERZ' | 'STRIPE' | 'BOTH';
+    gateway: 'PAYSTATION' | 'STRIPE' | 'BOTH';
   };
 
   // General Platform Settings

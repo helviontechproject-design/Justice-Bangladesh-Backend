@@ -14,7 +14,7 @@ import { sendEmail } from '../../utils/sendMail';
 import { AppointmentPaymentStatus, AppointmentStatus } from '../appointment/appointment.interface';
 import { AvailabilityModel } from '../availability/availability.model';
 import { Notification } from '../notification/notification.model';
-import { SSLService } from './sslCommerz/sslCommerz.service';
+import { PayStationService } from './paystation/paystation.service';
 import { NotificationHelper } from '../notification/notification.helper';
 
 const reCreatePayment = async (id: string, decodedUser: JwtPayload) => {
@@ -69,7 +69,7 @@ const reCreatePayment = async (id: string, decodedUser: JwtPayload) => {
     throw new AppError(StatusCodes.NOT_FOUND, 'Lawyer not found');
   }
 
-  // Prepare SSL payload
+  // Prepare PayStation payload
   const userAddress =
     client.profileInfo.street_address || client.profileInfo.district || 'Bangladesh';
   const userEmail = client.profileInfo.email || 'demo@gmail.com';
@@ -77,23 +77,27 @@ const reCreatePayment = async (id: string, decodedUser: JwtPayload) => {
   const userName =
     client.profileInfo.fast_name + ' ' + client.profileInfo.last_name;
 
-  const sslPayload = {
-    address: userAddress,
-    email: userEmail,
-    phoneNumber: userPhoneNumber,
-    name: userName,
-    amount: existingPayment.amount,
-    transactionId: existingPayment.transactionId,
+  const paystationPayload = {
+    invoice_number: existingPayment.transactionId,
+    currency: 'BDT',
+    payment_amount: existingPayment.amount,
+    reference: `Appointment-${appointment._id}`,
+    cust_name: userName,
+    cust_phone: userPhoneNumber,
+    cust_email: userEmail,
+    cust_address: userAddress,
+    callback_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?txn=${existingPayment.transactionId}`,
+    checkout_items: `Lawyer Consultation - ${lawyer.profile_Details?.fast_name || ''} ${lawyer.profile_Details?.last_name || ''}`,
   };
 
   console.log('🔄 Regenerating payment link for:', existingPayment.transactionId);
 
   // Generate new payment link
-  const sslPayment = await SSLService.sslPaymentInit(sslPayload);
+  const paystationPayment = await PayStationService.initiatePayment(paystationPayload);
 
   return {
     appointmentId: appointment._id,
-    paymentUrl: sslPayment?.GatewayPageURL || sslPayment?.gatewayPageURL || null,
+    paymentUrl: paystationPayment?.payment_url || null,
   };
 };
 
@@ -207,7 +211,7 @@ const successPayment = async (query: Record<string, string>) => {
         client?.profileInfo.fast_name + ' ' +
         client?.profileInfo.last_name,
       clientEmail: client?.profileInfo.email as string,
-      paymentMethod: 'sslCommerz',
+      paymentMethod: 'PayStation',
       totalAmount: updatedPayment.amount,
       status: PaymentStatus.PAID,
       approvedBy: 'Admin',

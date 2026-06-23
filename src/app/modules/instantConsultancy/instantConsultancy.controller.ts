@@ -14,7 +14,7 @@ const initPayment = catchAsync(async (req: Request, res: Response) => {
     documentUrls = await instantConsultancyService.uploadDocuments(files);
   }
   const result = await instantConsultancyService.initPayment(decodedUser, { ...req.body, documentUrls });
-  sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: 'bKash payment initiated', data: result });
+  sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: 'PayStation payment initiated', data: result });
 });
 
 const createRequest = catchAsync(async (req: Request, res: Response) => {

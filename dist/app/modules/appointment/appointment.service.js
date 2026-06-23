@@ -59,12 +59,13 @@ const payment_model_1 = require("../payment/payment.model");
 const payment_interface_1 = require("../payment/payment.interface");
 const wallet_model_1 = require("../wallet/wallet.model");
 const user_interface_1 = require("../user/user.interface");
-const bkash_service_1 = require("../bkash/bkash.service");
+// import { BkashService } from "../bkash/bkash.service"; // Removed: Using PayStation now
+const paystation_service_1 = require("../payment/paystation/paystation.service");
 const conversation_model_1 = require("../chat/conversation/conversation.model");
 const user_model_1 = require("../user/user.model");
 const notification_helper_1 = require("../notification/notification.helper");
 const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a, _b, _c, _d;
     if (!decodedUser.userId) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.UNAUTHORIZED, "Unauthorized user");
     }
@@ -219,29 +220,43 @@ const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, vo
         const lawyerProfile = yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(payload.lawyerId, {
             $inc: { appointments_Count: 1 },
         }, { session });
-        // bKash payment init
+        // PayStation payment init
         const orderId = `APT-${transactionId}`;
-        let bkashURL = null;
-        let bkashPaymentID = null;
+        let paymentURL = null;
         try {
-            const bkashRes = yield bkash_service_1.BkashService.createPayment({
-                amount: String(payment[0].amount),
-                orderId,
-                merchantInvoiceNumber: orderId,
-            });
-            if ((bkashRes === null || bkashRes === void 0 ? void 0 : bkashRes.statusCode) === '0000') {
-                bkashURL = bkashRes.bkashURL;
-                bkashPaymentID = bkashRes.paymentID;
-                // Store bkashPaymentID in payment record
-                yield payment_model_1.Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+            // Get client details for PayStation
+            const clientProfile = yield client_model_1.ClientProfileModel.findById(payload.clientId);
+            const lawyerProfile = yield lawyer_model_1.LawyerProfileModel.findById(payload.lawyerId);
+            if (!clientProfile || !lawyerProfile) {
+                throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Client or Lawyer profile not found');
             }
+            const userAddress = clientProfile.profileInfo.street_address ||
+                clientProfile.profileInfo.district ||
+                'Bangladesh';
+            const userEmail = clientProfile.profileInfo.email || 'demo@gmail.com';
+            const userPhoneNumber = clientProfile.profileInfo.phone;
+            const userName = `${clientProfile.profileInfo.fast_name || ''} ${clientProfile.profileInfo.last_name || ''}`.trim() || 'Client';
+            const paystationPayload = {
+                invoice_number: transactionId,
+                currency: 'BDT',
+                payment_amount: payment[0].amount,
+                reference: `Appointment-${appointmentId}`,
+                cust_name: userName,
+                cust_phone: userPhoneNumber,
+                cust_email: userEmail,
+                cust_address: userAddress,
+                callback_url: `${process.env.FRONTEND_URL || 'http://192.168.0.104:3000'}/payment/callback?txn=${transactionId}`,
+                checkout_items: `Lawyer Consultation - ${((_c = lawyerProfile.profile_Details) === null || _c === void 0 ? void 0 : _c.fast_name) || ''} ${((_d = lawyerProfile.profile_Details) === null || _d === void 0 ? void 0 : _d.last_name) || ''}`,
+            };
+            console.log('💳 Initiating PayStation payment:', transactionId);
+            const paystationPayment = yield paystation_service_1.PayStationService.initiatePayment(paystationPayload);
+            paymentURL = (paystationPayment === null || paystationPayment === void 0 ? void 0 : paystationPayment.payment_url) || null;
+            console.log('✅ PayStation payment URL generated:', paymentURL);
         }
         catch (error) {
-            console.log('bKash API not available, using development mode');
-            // Development mode: Create mock payment data
-            bkashURL = `https://sandbox.bka.sh/payment?paymentID=DEV-${Date.now()}`;
-            bkashPaymentID = `DEV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            yield payment_model_1.Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+            console.error('❌ PayStation payment initiation failed:', error);
+            // Continue without payment URL - user can retry later
+            paymentURL = null;
         }
         yield session.commitTransaction();
         session.endSession();
@@ -259,8 +274,7 @@ const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, vo
         }
         return {
             appointmentId,
-            bkashURL,
-            bkashPaymentID,
+            paymentUrl: paymentURL,
             transactionId: payment[0].transactionId,
         };
     }

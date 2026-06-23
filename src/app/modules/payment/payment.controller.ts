@@ -4,7 +4,7 @@ import { paymentService } from './payment.service';
 import sendResponse from '../../utils/sendResponse';
 import { StatusCodes } from 'http-status-codes';
 import { JwtPayload } from 'jsonwebtoken';
-import { SSLService } from './sslCommerz/sslCommerz.service';
+import { PayStationService } from './paystation/paystation.service';
 import { envVars } from '../../config/env';
 
 const reCreatePayment = catchAsync(
@@ -25,8 +25,6 @@ const reCreatePayment = catchAsync(
   }
 );
 
-
-
 const successPayment = catchAsync(async (req: Request, res: Response) => {
   const query = req.query;
   const result = await paymentService.successPayment(
@@ -35,23 +33,24 @@ const successPayment = catchAsync(async (req: Request, res: Response) => {
 
   if (result.success) {
     res.redirect(
-      `${envVars.SSL.SSL_SUCCESS_FRONTEND_URL}?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`
+      `${envVars.FRONTEND_URL}/payment/success?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`
     );
   }
 });
+
 const failPayment = catchAsync(async (req: Request, res: Response) => {
   const query = req.query;
   const result = await paymentService.failPayment(
     query as Record<string, string>
   );
 
-
   if (!result.success) {
     res.redirect(
-      `${envVars.SSL.SSL_FAIL_FRONTEND_URL}?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`
+      `${envVars.FRONTEND_URL}/payment/fail?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`
     );
   }
 });
+
 const cancelPayment = catchAsync(async (req: Request, res: Response) => {
   const query = req.query;
   const result = await paymentService.cancelPayment(
@@ -59,13 +58,13 @@ const cancelPayment = catchAsync(async (req: Request, res: Response) => {
   );
   if (!result.success) {
     res.redirect(
-      `${envVars.SSL.SSL_CANCEL_FRONTEND_URL}?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`
+      `${envVars.FRONTEND_URL}/payment/cancel?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`
     );
   }
 });
 
 const validatePayment = catchAsync(async (req: Request, res: Response) => {
-  await SSLService.validatepayment(req.body);
+  await PayStationService.validateCallback(req.body);
   sendResponse(res, {
     statusCode: 200,
     success: true,

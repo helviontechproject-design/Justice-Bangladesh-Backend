@@ -16,7 +16,8 @@ import { Payment } from "../payment/payment.model";
 import { PaymentStatus, PaymentType } from "../payment/payment.interface";
 import { WalletModel } from "../wallet/wallet.model";
 import { ERole } from "../user/user.interface";
-import { BkashService } from "../bkash/bkash.service";
+// import { BkashService } from "../bkash/bkash.service"; // Removed: Using PayStation now
+import { PayStationService } from "../payment/paystation/paystation.service";
 import { ConversationModel } from "../chat/conversation/conversation.model";
 import { UserModel } from "../user/user.model";
 import { Request } from "express";
@@ -234,30 +235,51 @@ const createAppointment = async (
       { session },
     );
 
-    // bKash payment init
+    // PayStation payment init
     const orderId = `APT-${transactionId}`;
-    let bkashURL: string | null = null;
-    let bkashPaymentID: string | null = null;
+    let paymentURL: string | null = null;
 
     try {
-      const bkashRes = await BkashService.createPayment({
-        amount: String(payment[0].amount),
-        orderId,
-        merchantInvoiceNumber: orderId,
-      }) as any;
+      // Get client details for PayStation
+      const clientProfile = await ClientProfileModel.findById(payload.clientId);
+      const lawyerProfile = await LawyerProfileModel.findById(payload.lawyerId);
 
-      if (bkashRes?.statusCode === '0000') {
-        bkashURL = bkashRes.bkashURL;
-        bkashPaymentID = bkashRes.paymentID;
-        // Store bkashPaymentID in payment record
-        await Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+      if (!clientProfile || !lawyerProfile) {
+        throw new AppError(StatusCodes.NOT_FOUND, 'Client or Lawyer profile not found');
       }
+
+      const userAddress =
+        clientProfile.profileInfo.street_address || 
+        clientProfile.profileInfo.district || 
+        'Bangladesh';
+      const userEmail = clientProfile.profileInfo.email || 'demo@gmail.com';
+      const userPhoneNumber = clientProfile.profileInfo.phone;
+      const userName =
+        `${clientProfile.profileInfo.fast_name || ''} ${clientProfile.profileInfo.last_name || ''}`.trim() || 'Client';
+
+      const paystationPayload = {
+        invoice_number: transactionId,
+        currency: 'BDT',
+        payment_amount: payment[0].amount,
+        reference: `Appointment-${appointmentId}`,
+        cust_name: userName,
+        cust_phone: userPhoneNumber,
+        cust_email: userEmail,
+        cust_address: userAddress,
+        callback_url: `${process.env.FRONTEND_URL || 'http://192.168.0.104:3000'}/payment/callback?txn=${transactionId}`,
+        checkout_items: `Lawyer Consultation - ${lawyerProfile.profile_Details?.fast_name || ''} ${lawyerProfile.profile_Details?.last_name || ''}`,
+      };
+
+      console.log('💳 Initiating PayStation payment:', transactionId);
+
+      const paystationPayment = await PayStationService.initiatePayment(paystationPayload);
+      paymentURL = paystationPayment?.payment_url || null;
+
+      console.log('✅ PayStation payment URL generated:', paymentURL);
     } catch (error) {
-      console.log('bKash API not available, using development mode');
-      // Development mode: Create mock payment data
-      bkashURL = `https://sandbox.bka.sh/payment?paymentID=DEV-${Date.now()}`;
-      bkashPaymentID = `DEV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      await Payment.findByIdAndUpdate(paymentId, { bkashPaymentID }, { session });
+      console.error('❌ PayStation payment initiation failed:', error);
+      // Continue without payment URL - user can retry later
+      paymentURL = null;
     }
 
     await session.commitTransaction();
@@ -278,8 +300,7 @@ const createAppointment = async (
 
     return {
       appointmentId,
-      bkashURL,
-      bkashPaymentID,
+      paymentUrl: paymentURL,
       transactionId: payment[0].transactionId,
     };
   } catch (error) {

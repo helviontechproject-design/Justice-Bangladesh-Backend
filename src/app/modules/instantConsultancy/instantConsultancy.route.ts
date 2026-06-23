@@ -6,7 +6,7 @@ import { multerUpload } from '../../config/multer.config';
 
 const router = Router();
 
-// Client: step 1 — upload docs + initiate bKash payment → returns bkashURL
+// Client: step 1 — upload docs + initiate PayStation payment → returns payment URL
 router.post(
   '/init-payment',
   checkAuth(ERole.CLIENT),
@@ -14,7 +14,7 @@ router.post(
   instantConsultancyController.initPayment,
 );
 
-// Client: step 2 — execute payment + create request (called after bKash redirect)
+// Client: step 2 — create request after payment (called after PayStation payment completion)
 router.post('/request', checkAuth(ERole.CLIENT), multerUpload.array('documents', 5), instantConsultancyController.createRequest);
 
 // Client: check status of their request (poll every 3s)

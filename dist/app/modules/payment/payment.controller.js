@@ -17,7 +17,7 @@ const catchAsync_1 = require("../../utils/catchAsync");
 const payment_service_1 = require("./payment.service");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_codes_1 = require("http-status-codes");
-const sslCommerz_service_1 = require("./sslCommerz/sslCommerz.service");
+const paystation_service_1 = require("./paystation/paystation.service");
 const env_1 = require("../../config/env");
 const reCreatePayment = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { paymentId } = req.params;
@@ -34,25 +34,25 @@ const successPayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void
     const query = req.query;
     const result = yield payment_service_1.paymentService.successPayment(query);
     if (result.success) {
-        res.redirect(`${env_1.envVars.SSL.SSL_SUCCESS_FRONTEND_URL}?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`);
+        res.redirect(`${env_1.envVars.FRONTEND_URL}/payment/success?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`);
     }
 }));
 const failPayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const query = req.query;
     const result = yield payment_service_1.paymentService.failPayment(query);
     if (!result.success) {
-        res.redirect(`${env_1.envVars.SSL.SSL_FAIL_FRONTEND_URL}?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`);
+        res.redirect(`${env_1.envVars.FRONTEND_URL}/payment/fail?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`);
     }
 }));
 const cancelPayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const query = req.query;
     const result = yield payment_service_1.paymentService.cancelPayment(query);
     if (!result.success) {
-        res.redirect(`${env_1.envVars.SSL.SSL_CANCEL_FRONTEND_URL}?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`);
+        res.redirect(`${env_1.envVars.FRONTEND_URL}/payment/cancel?transactionId=${query.transactionId}&message=${result.message}&amount=${query.amount}&status=${query.status}`);
     }
 }));
 const validatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    yield sslCommerz_service_1.SSLService.validatepayment(req.body);
+    yield paystation_service_1.PayStationService.validateCallback(req.body);
     (0, sendResponse_1.default)(res, {
         statusCode: 200,
         success: true,

@@ -222,95 +222,10 @@ const getAppointmentStats = catchAsync(
   },
 );
 
-// Dev controller — skips SSL payment & availability check
-const createAppointmentDev = catchAsync(async (req: Request, res: Response) => {
-  const { lawyerId, appointmentDate, selectedTime, appointmentType, caseType, note, videoCallingTime, totalFee } = req.body;
-
-  const { Appointment } = await import('./appointment.model');
-  const { AppointmentStatus, AppointmentPaymentStatus } = await import('./appointment.interface');
-
-  const videoCallingId = `VC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  const appointment = await Appointment.create({
-    lawyerId,
-    videoCallingId,
-    videoCallingTime: Number(videoCallingTime) || 30,
-    appointmentDate: new Date(appointmentDate),
-    selectedTime: selectedTime || '09:00 AM',
-    appointmentType: appointmentType || 'audio',
-    caseType: caseType || 'General Consultation',
-    note: note || '',
-    documents: [],
-    status: AppointmentStatus.PENDING,
-    payment_Status: AppointmentPaymentStatus.PAID,
-  });
-
-  sendResponse(res, {
-    success: true,
-    statusCode: StatusCodes.CREATED,
-    message: 'Appointment booked successfully',
-    data: appointment,
-  });
-});
-
-// Dev: confirm payment without real gateway
-const confirmPaymentDev = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { Appointment } = await import('./appointment.model');
-  const { Payment } = await import('../payment/payment.model');
-  const { WalletModel } = await import('../wallet/wallet.model');
-  const { AppointmentPaymentStatus, AppointmentStatus } = await import('./appointment.interface');
-  const { PaymentStatus } = await import('../payment/payment.interface');
-
-  const appointment = await Appointment.findByIdAndUpdate(
-    id,
-    { payment_Status: AppointmentPaymentStatus.PAID, status: AppointmentStatus.PENDING },
-    { new: true }
-  );
-  if (!appointment) throw new Error('Appointment not found');
-
-  if (appointment.paymentId) {
-    const payment = await Payment.findByIdAndUpdate(
-      appointment.paymentId,
-      { status: PaymentStatus.PAID },
-      { new: true }
-    );
-    if (payment) {
-      await WalletModel.findOneAndUpdate(
-        { lawyerId: appointment.lawyerId },
-        { $inc: { balance: payment.amount, totalEarned: payment.amount }, $push: { transactions: payment._id } },
-        { upsert: true }
-      );
-    }
-  }
-
-  sendResponse(res, { success: true, statusCode: 200, message: 'Payment confirmed', data: appointment });
-});
-
-// Dev: get all recent appointments without auth
-const getMyAppointmentsDev = catchAsync(async (req: Request, res: Response) => {
-  const { Appointment } = await import('./appointment.model');
-  const appointments = await Appointment.find()
-    .populate('lawyerId', 'profile_Details userId')
-    .populate({ path: 'lawyerId', populate: { path: 'userId', select: 'profilePhoto' } })
-    .sort({ createdAt: -1 })
-    .limit(20);
-  sendResponse(res, {
-    success: true,
-    statusCode: StatusCodes.OK,
-    message: 'Appointments fetched',
-    data: appointments,
-    meta: undefined,
-  });
-});
-
 export const appointmentController = {
   createAppointment,
-  createAppointmentDev,
-  confirmPaymentDev,
   getAllAppointments,
   getMyAppointments,
-  getMyAppointmentsDev,
   getSingleAppointment,
   updateAppointment,
   updateAppointmentStatus,

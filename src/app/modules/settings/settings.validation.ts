@@ -24,7 +24,7 @@ const updatePlatformSettingsSchema = z
       .object({
         currency: z.string().optional(),
         taxPercentage: z.number().min(0).max(100).optional(),
-        gateway: z.enum(['SSLCOMMERZ', 'STRIPE', 'BOTH']).optional(),
+        gateway: z.enum(['PAYSTATION', 'STRIPE', 'BOTH']).optional(),
       })
       .partial()
       .optional(),

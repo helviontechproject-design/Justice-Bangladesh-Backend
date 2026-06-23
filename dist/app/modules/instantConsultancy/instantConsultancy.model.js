@@ -18,8 +18,8 @@ const instantConsultancySchema = new mongoose_1.Schema({
     },
     fee: { type: Number, default: instantConsultancy_interface_1.INSTANT_CONSULTATION_FEE },
     paymentStatus: { type: String, enum: ['pending', 'paid'], default: 'pending' },
-    bkashPaymentID: { type: String },
-    bkashTrxID: { type: String },
+    paystationInvoiceNumber: { type: String },
+    paystationTransactionId: { type: String },
 }, { timestamps: true });
 const instantConsultancySettingsSchema = new mongoose_1.Schema({
     fee: { type: Number, default: instantConsultancy_interface_1.INSTANT_CONSULTATION_FEE },

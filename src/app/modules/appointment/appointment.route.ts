@@ -87,12 +87,6 @@ router.patch(
   appointmentController.rescheduleAppointment
 );
 
-// Dev: confirm payment (no real gateway)
-router.post(
-  '/:id/confirm-payment-dev',
-  appointmentController.confirmPaymentDev
-);
-
 // Cancel appointment with refund (CLIENT or LAWYER)
 router.post(
   '/:id/cancel',

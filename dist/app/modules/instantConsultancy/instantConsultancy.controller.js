@@ -26,7 +26,7 @@ const initPayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0,
         documentUrls = yield instantConsultancy_service_1.instantConsultancyService.uploadDocuments(files);
     }
     const result = yield instantConsultancy_service_1.instantConsultancyService.initPayment(decodedUser, Object.assign(Object.assign({}, req.body), { documentUrls }));
-    (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: 'bKash payment initiated', data: result });
+    (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: 'PayStation payment initiated', data: result });
 }));
 const createRequest = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedUser = req.user;

@@ -27,7 +27,6 @@ import { policyRoute } from '../modules/policy/policy.route';
 import { settingsRoutes } from '../modules/settings/settings.route';
 import { serviceBookingRoute } from '../modules/serviceBooking/serviceBooking.route';
 import { instantConsultancyRoute } from '../modules/instantConsultancy/instantConsultancy.route';
-import { bkashRoute } from '../modules/bkash/bkash.route';
 import { reportRoute } from '../modules/report/report.route';
 
 export const router = Router();
@@ -140,10 +139,6 @@ const moduleRoutes = [
   {
     path: '/service-booking',
     route: serviceBookingRoute
-  },
-  {
-    path: '/bkash',
-    route: bkashRoute
   },
   {
     path: '/instant-consultancy',

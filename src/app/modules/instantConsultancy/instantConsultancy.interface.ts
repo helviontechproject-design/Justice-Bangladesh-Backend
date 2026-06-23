@@ -39,8 +39,8 @@ export interface IInstantConsultancy extends Document {
   status: InstantConsultancyStatus;
   fee: number;
   paymentStatus: 'pending' | 'paid';
-  bkashPaymentID?: string;
-  bkashTrxID?: string;
+  paystationInvoiceNumber?: string;
+  paystationTransactionId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

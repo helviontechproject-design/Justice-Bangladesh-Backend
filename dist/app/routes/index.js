@@ -30,7 +30,6 @@ const policy_route_1 = require("../modules/policy/policy.route");
 const settings_route_1 = require("../modules/settings/settings.route");
 const serviceBooking_route_1 = require("../modules/serviceBooking/serviceBooking.route");
 const instantConsultancy_route_1 = require("../modules/instantConsultancy/instantConsultancy.route");
-const bkash_route_1 = require("../modules/bkash/bkash.route");
 const report_route_1 = require("../modules/report/report.route");
 exports.router = (0, express_1.Router)();
 const moduleRoutes = [
@@ -141,10 +140,6 @@ const moduleRoutes = [
     {
         path: '/service-booking',
         route: serviceBooking_route_1.serviceBookingRoute
-    },
-    {
-        path: '/bkash',
-        route: bkash_route_1.bkashRoute
     },
     {
         path: '/instant-consultancy',

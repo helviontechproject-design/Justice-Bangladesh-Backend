@@ -56,8 +56,8 @@ const platformSettingsSchema = new mongoose_1.Schema({
         },
         gateway: {
             type: String,
-            enum: ['SSLCOMMERZ', 'STRIPE', 'BOTH'],
-            default: 'SSLCOMMERZ',
+            enum: ['PAYSTATION', 'STRIPE', 'BOTH'],
+            default: 'PAYSTATION',
         },
     },
     general: {
