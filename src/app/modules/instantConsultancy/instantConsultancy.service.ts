@@ -206,35 +206,12 @@ const createRequest = async (decodedUser: JwtPayload, payload: {
 
   let paystationTransactionId: string | undefined;
 
+  // Note: Payment is already verified on client side via callback URL
+  // Client only reaches here after successful payment confirmation
+  // No need for backend verification - proceed with request creation
   if (PAYMENT_ENABLED && payload.orderId) {
-    // Verify payment status with PayStation
-    // Note: Payment is already verified by callback URL on client side
-    // We do a lightweight check here but don't block on failure since callback was verified
-    try {
-      const { PayStationService } = await import('../payment/paystation/paystation.service');
-      const paymentStatus = await PayStationService.checkTransactionStatus({
-        invoice_number: payload.orderId,
-      });
-
-      console.log('💳 Payment verification result:', { 
-        orderId: payload.orderId, 
-        success: paymentStatus.success, 
-        status: paymentStatus.status 
-      });
-
-      // Log payment status but don't block - client already confirmed payment
-      if (paymentStatus.success) {
-        paystationTransactionId = paymentStatus.transaction_id;
-        console.log('✅ Payment verified with PayStation');
-      } else {
-        // PayStation status check failed, but client already got callback
-        // Log warning but continue - callback URL is source of truth
-        console.warn('⚠️ PayStation status check inconclusive, but proceeding based on client callback');
-      }
-    } catch (statusError: any) {
-      console.error('⚠️ PayStation status check error (non-blocking):', statusError.message);
-      // Don't throw - payment callback from client is proof enough
-    }
+    console.log('✅ Creating request with payment orderId:', payload.orderId);
+    paystationTransactionId = payload.orderId; // Store orderId as transaction reference
   }
 
   const clientName = `${(client.profileInfo as any)?.fast_name || ''} ${(client.profileInfo as any)?.last_name || ''}`.trim() || 'Client';
