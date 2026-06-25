@@ -266,7 +266,7 @@ const createAppointment = async (
         cust_phone: userPhoneNumber,
         cust_email: userEmail,
         cust_address: userAddress,
-        callback_url: `${process.env.FRONTEND_URL || 'http://192.168.0.104:3000'}/payment/callback?txn=${transactionId}`,
+        callback_url: `https://app.justicebangladesh.com/payment/callback?txn=${transactionId}`,
         checkout_items: `Lawyer Consultation - ${lawyerProfile.profile_Details?.fast_name || ''} ${lawyerProfile.profile_Details?.last_name || ''}`,
       };
 
