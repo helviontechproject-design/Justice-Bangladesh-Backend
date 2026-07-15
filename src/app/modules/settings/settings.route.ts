@@ -1,4 +1,5 @@
 import express from 'express';
+import express from 'express';
 import { settingsController } from './settings.controller';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { ERole } from '../user/user.interface';

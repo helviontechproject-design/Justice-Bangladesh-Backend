@@ -18,7 +18,7 @@ const getPlatformSettings = catchAsync(async (req: Request, res: Response) => {
 
 // Update platform settings (admin only)
 const updatePlatformSettings = catchAsync(async (req: Request, res: Response) => {
-  console.log('Update settings request body:', req.body);
+  console.log('Update settings request body:', JSON.stringify(req.body, null, 2));
   
   const result = await settingsService.updatePlatformSettings(req.body);
 
