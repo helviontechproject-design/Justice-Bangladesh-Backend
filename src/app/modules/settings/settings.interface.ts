@@ -54,6 +54,22 @@ export interface IPlatformSettings {
     lawyerNumber: string;
   };
 
+  // Home Page Cards - Dynamic Images for Flutter App
+  homePageCards?: {
+    instantConsultationCard: {
+      image: string; // Image URL from Cloudinary
+      title: string;
+      description: string;
+      backgroundColor?: string;
+    };
+    popularSpecialistCard: {
+      image: string; // Image URL from Cloudinary
+      title: string;
+      description: string;
+      backgroundColor?: string;
+    };
+  };
+
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -62,6 +62,13 @@ const updatePlatformSettings = async (
     if (payload.whatsapp) {
       settings.whatsapp = { ...settings.whatsapp, ...payload.whatsapp } as { clientNumber: string; lawyerNumber: string };
     }
+    if (payload.homePageCards) {
+      console.log('Updating homePageCards:', payload.homePageCards);
+      settings.homePageCards = { 
+        ...settings.homePageCards, 
+        ...payload.homePageCards 
+      };
+    }
 
     await settings.save();
     console.log('Settings saved successfully');

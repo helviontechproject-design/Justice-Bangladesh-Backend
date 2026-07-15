@@ -245,7 +245,7 @@ const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, vo
                 cust_phone: userPhoneNumber,
                 cust_email: userEmail,
                 cust_address: userAddress,
-                callback_url: `${process.env.FRONTEND_URL || 'http://192.168.0.104:3000'}/payment/callback?txn=${transactionId}`,
+                callback_url: `https://app.justicebangladesh.com/payment/callback?txn=${transactionId}`,
                 checkout_items: `Lawyer Consultation - ${((_c = lawyerProfile.profile_Details) === null || _c === void 0 ? void 0 : _c.fast_name) || ''} ${((_d = lawyerProfile.profile_Details) === null || _d === void 0 ? void 0 : _d.last_name) || ''}`,
             };
             console.log('💳 Initiating PayStation payment:', transactionId);

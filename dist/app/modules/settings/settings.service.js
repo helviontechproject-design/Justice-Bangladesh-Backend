@@ -63,6 +63,10 @@ const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, fu
         if (payload.whatsapp) {
             settings.whatsapp = Object.assign(Object.assign({}, settings.whatsapp), payload.whatsapp);
         }
+        if (payload.homePageCards) {
+            console.log('Updating homePageCards:', payload.homePageCards);
+            settings.homePageCards = Object.assign(Object.assign({}, settings.homePageCards), payload.homePageCards);
+        }
         yield settings.save();
         console.log('Settings saved successfully');
     }

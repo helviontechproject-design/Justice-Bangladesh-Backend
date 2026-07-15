@@ -74,6 +74,30 @@ const updatePlatformSettingsSchema = zod_1.z
     })
         .partial()
         .optional(),
+    // Home Page Cards - Dynamic Images
+    homePageCards: zod_1.z
+        .object({
+        instantConsultationCard: zod_1.z
+            .object({
+            image: zod_1.z.string().url().optional(),
+            title: zod_1.z.string().optional(),
+            description: zod_1.z.string().optional(),
+            backgroundColor: zod_1.z.string().optional(),
+        })
+            .partial()
+            .optional(),
+        popularSpecialistCard: zod_1.z
+            .object({
+            image: zod_1.z.string().url().optional(),
+            title: zod_1.z.string().optional(),
+            description: zod_1.z.string().optional(),
+            backgroundColor: zod_1.z.string().optional(),
+        })
+            .partial()
+            .optional(),
+    })
+        .partial()
+        .optional(),
 })
     .partial();
 exports.settingsValidation = {

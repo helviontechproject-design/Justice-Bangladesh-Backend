@@ -156,6 +156,47 @@ const platformSettingsSchema = new mongoose_1.Schema({
         clientNumber: { type: String, default: '' },
         lawyerNumber: { type: String, default: '' },
     },
+    // Home Page Cards - Dynamic Images for Flutter App
+    homePageCards: {
+        instantConsultationCard: {
+            image: {
+                type: String,
+                default: '',
+                description: 'Cloudinary image URL for Instant Consultation card',
+            },
+            title: {
+                type: String,
+                default: 'Instant Consultation',
+            },
+            description: {
+                type: String,
+                default: 'Connect with lawyers instantly',
+            },
+            backgroundColor: {
+                type: String,
+                default: '#E3F2FD',
+            },
+        },
+        popularSpecialistCard: {
+            image: {
+                type: String,
+                default: '',
+                description: 'Cloudinary image URL for Popular Specialist card',
+            },
+            title: {
+                type: String,
+                default: 'Popular Specialist',
+            },
+            description: {
+                type: String,
+                default: 'Find expert lawyers',
+            },
+            backgroundColor: {
+                type: String,
+                default: '#F1F8E9',
+            },
+        },
+    },
 }, {
     timestamps: true,
 });

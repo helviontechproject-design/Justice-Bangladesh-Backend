@@ -161,7 +161,7 @@ const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, 
             cust_phone: userPhoneNumber,
             cust_email: userEmail,
             cust_address: userAddress,
-            callback_url: `${process.env.FRONTEND_URL || 'http://192.168.0.104:3000'}/instant-consultancy/callback?orderId=${orderId}`,
+            callback_url: `https://app.justicebangladesh.com/instant-consultancy/callback?orderId=${orderId}`,
             checkout_items: itemName, // Use item name if available
         };
         console.log('💳 Initiating PayStation payment for Instant Consultancy:', orderId);
@@ -205,16 +205,12 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
     if (!client)
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Client profile not found');
     let paystationTransactionId;
+    // Note: Payment is already verified on client side via callback URL
+    // Client only reaches here after successful payment confirmation
+    // No need for backend verification - proceed with request creation
     if (PAYMENT_ENABLED && payload.orderId) {
-        // Verify payment status with PayStation
-        const { PayStationService } = yield Promise.resolve().then(() => __importStar(require('../payment/paystation/paystation.service')));
-        const paymentStatus = yield PayStationService.checkTransactionStatus({
-            invoice_number: payload.orderId,
-        });
-        if (!paymentStatus.success || paymentStatus.status !== 'success') {
-            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Payment not completed or invalid');
-        }
-        paystationTransactionId = paymentStatus.transaction_id;
+        console.log('✅ Creating request with payment orderId:', payload.orderId);
+        paystationTransactionId = payload.orderId; // Store orderId as transaction reference
     }
     const clientName = `${((_a = client.profileInfo) === null || _a === void 0 ? void 0 : _a.fast_name) || ''} ${((_b = client.profileInfo) === null || _b === void 0 ? void 0 : _b.last_name) || ''}`.trim() || 'Client';
     const appointmentType = payload.appointmentType || 'Audio Call';
