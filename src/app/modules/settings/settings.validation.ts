@@ -86,18 +86,12 @@ const updatePlatformSettingsSchema = z
         instantConsultationCard: z
           .object({
             image: z.string().url().optional(),
-            title: z.string().optional(),
-            description: z.string().optional(),
-            backgroundColor: z.string().optional(),
           })
           .partial()
           .optional(),
         popularSpecialistCard: z
           .object({
             image: z.string().url().optional(),
-            title: z.string().optional(),
-            description: z.string().optional(),
-            backgroundColor: z.string().optional(),
           })
           .partial()
           .optional(),

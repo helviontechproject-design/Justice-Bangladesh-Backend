@@ -58,15 +58,9 @@ export interface IPlatformSettings {
   homePageCards?: {
     instantConsultationCard: {
       image: string; // Image URL from Cloudinary
-      title: string;
-      description: string;
-      backgroundColor?: string;
     };
     popularSpecialistCard: {
       image: string; // Image URL from Cloudinary
-      title: string;
-      description: string;
-      backgroundColor?: string;
     };
   };
 
