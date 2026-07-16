@@ -17,6 +17,8 @@ const catchAsync_1 = require("../../utils/catchAsync");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_codes_1 = require("http-status-codes");
 const settings_service_1 = require("./settings.service");
+const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
+const user_interface_1 = require("../user/user.interface");
 // Get platform settings (public)
 const getPlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield settings_service_1.settingsService.getPlatformSettings();
@@ -29,11 +31,14 @@ const getPlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter
 }));
 // Update platform settings (admin only)
 const updatePlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('========== UPDATE SETTINGS ==========');
-    console.log('User:', req.user);
-    console.log('Headers:', req.headers);
-    console.log('Body:', JSON.stringify(req.body, null, 2));
-    console.log('====================================');
+    const user = req.user;
+    // Additional security check
+    if (!user || user.role !== user_interface_1.ERole.SUPER_ADMIN) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.FORBIDDEN, 'Unauthorized: Only super admins can update settings');
+    }
+    if (!req.body || Object.keys(req.body).length === 0) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Request body cannot be empty');
+    }
     const result = yield settings_service_1.settingsService.updatePlatformSettings(req.body);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_codes_1.StatusCodes.OK,

@@ -23,49 +23,38 @@ const getPlatformSettings = () => __awaiter(void 0, void 0, void 0, function* ()
 // Update platform settings (admin only)
 const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
-    console.log('Received payload in service:', JSON.stringify(payload, null, 2));
     let settings = yield settings_model_1.PlatformSettings.findOne();
     if (!settings) {
         // Create if doesn't exist
-        console.log('Creating new settings');
         settings = yield settings_model_1.PlatformSettings.create(payload);
     }
     else {
-        console.log('Updating existing settings');
-        // Update existing settings using deep merge
+        // Update existing settings using deep merge for nested objects
         if (payload.platformFee) {
-            console.log('Updating platformFee:', payload.platformFee);
             settings.platformFee = Object.assign(Object.assign({}, settings.platformFee), payload.platformFee);
         }
         if (payload.payout) {
-            console.log('Updating payout:', payload.payout);
             settings.payout = Object.assign(Object.assign({}, settings.payout), payload.payout);
         }
         if (payload.payment) {
-            console.log('Updating payment:', payload.payment);
             settings.payment = Object.assign(Object.assign({}, settings.payment), payload.payment);
         }
         if (payload.general) {
-            console.log('Updating general:', payload.general);
             settings.general = Object.assign(Object.assign({}, settings.general), payload.general);
         }
         if (payload.socialLinks) {
-            console.log('Updating socialLinks:', payload.socialLinks);
             settings.socialLinks = Object.assign(Object.assign({}, settings.socialLinks), payload.socialLinks);
         }
         if (payload.contacts) {
-            console.log('Updating contacts:', payload.contacts);
             settings.contacts = Object.assign(Object.assign({}, settings.contacts), payload.contacts);
         }
         if (payload.seo) {
-            console.log('Updating seo:', payload.seo);
             settings.seo = Object.assign(Object.assign({}, settings.seo), payload.seo);
         }
         if (payload.whatsapp) {
             settings.whatsapp = Object.assign(Object.assign({}, settings.whatsapp), payload.whatsapp);
         }
         if (payload.homePageCards) {
-            console.log('Updating homePageCards:', payload.homePageCards);
             settings.homePageCards = {
                 instantConsultationCard: {
                     image: (_e = (_b = (_a = payload.homePageCards.instantConsultationCard) === null || _a === void 0 ? void 0 : _a.image) !== null && _b !== void 0 ? _b : (_d = (_c = settings.homePageCards) === null || _c === void 0 ? void 0 : _c.instantConsultationCard) === null || _d === void 0 ? void 0 : _d.image) !== null && _e !== void 0 ? _e : '',
@@ -76,7 +65,6 @@ const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, fu
             };
         }
         yield settings.save();
-        console.log('Settings saved successfully');
     }
     return settings;
 });

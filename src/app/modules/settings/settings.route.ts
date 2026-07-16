@@ -10,9 +10,10 @@ const router = express.Router();
 // Get platform settings (public - no auth required)
 router.get('/', settingsController.getPlatformSettings);
 
-// Update platform settings (admin only)
+// Update platform settings (admin only - requires authentication and admin role)
 router.patch(
   '/',
+  checkAuth(ERole.SUPER_ADMIN),
   validateRequest(settingsValidation.updatePlatformSettingsSchema),
   settingsController.updatePlatformSettings
 );

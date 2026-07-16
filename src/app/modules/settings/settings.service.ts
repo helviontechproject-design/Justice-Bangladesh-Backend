@@ -19,51 +19,38 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
 const updatePlatformSettings = async (
   payload: Partial<IPlatformSettings>
 ): Promise<IPlatformSettings> => {
-  console.log('Received payload in service:', JSON.stringify(payload, null, 2));
-  
   let settings = await PlatformSettings.findOne();
 
   if (!settings) {
     // Create if doesn't exist
-    console.log('Creating new settings');
     settings = await PlatformSettings.create(payload);
   } else {
-    console.log('Updating existing settings');
-    
-    // Update existing settings using deep merge
+    // Update existing settings using deep merge for nested objects
     if (payload.platformFee) {
-      console.log('Updating platformFee:', payload.platformFee);
       settings.platformFee = { ...settings.platformFee, ...payload.platformFee };
     }
     if (payload.payout) {
-      console.log('Updating payout:', payload.payout);
       settings.payout = { ...settings.payout, ...payload.payout };
     }
     if (payload.payment) {
-      console.log('Updating payment:', payload.payment);
       settings.payment = { ...settings.payment, ...payload.payment };
     }
     if (payload.general) {
-      console.log('Updating general:', payload.general);
       settings.general = { ...settings.general, ...payload.general };
     }
     if (payload.socialLinks) {
-      console.log('Updating socialLinks:', payload.socialLinks);
       settings.socialLinks = { ...settings.socialLinks, ...payload.socialLinks };
     }
     if (payload.contacts) {
-      console.log('Updating contacts:', payload.contacts);
       settings.contacts = { ...settings.contacts, ...payload.contacts };
     }
     if (payload.seo) {
-      console.log('Updating seo:', payload.seo);
       settings.seo = { ...settings.seo, ...payload.seo };
     }
     if (payload.whatsapp) {
       settings.whatsapp = { ...settings.whatsapp, ...payload.whatsapp } as { clientNumber: string; lawyerNumber: string };
     }
     if (payload.homePageCards) {
-      console.log('Updating homePageCards:', payload.homePageCards);
       settings.homePageCards = {
         instantConsultationCard: {
           image: payload.homePageCards.instantConsultationCard?.image ?? settings.homePageCards?.instantConsultationCard?.image ?? '',
@@ -75,7 +62,6 @@ const updatePlatformSettings = async (
     }
 
     await settings.save();
-    console.log('Settings saved successfully');
   }
 
   return settings;
