@@ -1,5 +1,4 @@
 import express from 'express';
-import express from 'express';
 import { settingsController } from './settings.controller';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { ERole } from '../user/user.interface';
@@ -14,6 +13,7 @@ router.get('/', settingsController.getPlatformSettings);
 // Update platform settings (admin only)
 router.patch(
   '/',
+  checkAuth(ERole.SUPER_ADMIN),
   validateRequest(settingsValidation.updatePlatformSettingsSchema),
   settingsController.updatePlatformSettings
 );

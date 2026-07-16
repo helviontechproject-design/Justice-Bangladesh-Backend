@@ -29,7 +29,11 @@ const getPlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter
 }));
 // Update platform settings (admin only)
 const updatePlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('Update settings request body:', req.body);
+    console.log('========== UPDATE SETTINGS ==========');
+    console.log('User:', req.user);
+    console.log('Headers:', req.headers);
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('====================================');
     const result = yield settings_service_1.settingsService.updatePlatformSettings(req.body);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_codes_1.StatusCodes.OK,
