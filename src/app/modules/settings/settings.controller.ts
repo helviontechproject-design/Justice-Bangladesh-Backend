@@ -4,7 +4,6 @@ import sendResponse from '../../utils/sendResponse';
 import { StatusCodes as httpStatus } from 'http-status-codes';
 import { settingsService } from './settings.service';
 import AppError from '../../errorHelpers/AppError';
-import { ERole } from '../user/user.interface';
 
 // Get platform settings (public)
 const getPlatformSettings = catchAsync(async (req: Request, res: Response) => {
@@ -20,13 +19,6 @@ const getPlatformSettings = catchAsync(async (req: Request, res: Response) => {
 
 // Update platform settings (admin only)
 const updatePlatformSettings = catchAsync(async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  
-  // Additional security check
-  if (!user || user.role !== ERole.SUPER_ADMIN) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Unauthorized: Only super admins can update settings');
-  }
-
   if (!req.body || Object.keys(req.body).length === 0) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Request body cannot be empty');
   }
@@ -45,3 +37,4 @@ export const settingsController = {
   getPlatformSettings,
   updatePlatformSettings,
 };
+
