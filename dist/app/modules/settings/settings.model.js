@@ -6,7 +6,6 @@ const platformSettingsSchema = new mongoose_1.Schema({
     platformFee: {
         percentage: {
             type: Number,
-            required: true,
             min: 0,
             max: 100,
             default: 15,
@@ -24,19 +23,16 @@ const platformSettingsSchema = new mongoose_1.Schema({
     payout: {
         minimumAmount: {
             type: Number,
-            required: true,
             min: 0,
             default: 1000,
         },
         processingDays: {
             type: Number,
-            required: true,
             min: 1,
             default: 7,
         },
         maxPendingPayouts: {
             type: Number,
-            required: true,
             min: 1,
             default: 5,
         },
@@ -44,12 +40,10 @@ const platformSettingsSchema = new mongoose_1.Schema({
     payment: {
         currency: {
             type: String,
-            required: true,
             default: 'BDT',
         },
         taxPercentage: {
             type: Number,
-            required: true,
             min: 0,
             max: 100,
             default: 0,
@@ -63,17 +57,14 @@ const platformSettingsSchema = new mongoose_1.Schema({
     general: {
         platformName: {
             type: String,
-            required: true,
             default: 'LocalGuide',
         },
         supportEmail: {
             type: String,
-            required: true,
             default: 'support@localguide.com',
         },
         supportPhone: {
             type: String,
-            required: true,
             default: '+8801700000000',
         },
         maintenanceMode: {
@@ -110,27 +101,22 @@ const platformSettingsSchema = new mongoose_1.Schema({
     contacts: {
         address: {
             type: String,
-            required: true,
             default: 'Dhaka, Bangladesh',
         },
         phone: {
             type: String,
-            required: true,
             default: '+8801700000000',
         },
         email: {
             type: String,
-            required: true,
             default: 'contact@localguide.com',
         },
         supportEmail: {
             type: String,
-            required: true,
             default: 'support@localguide.com',
         },
         supportPhone: {
             type: String,
-            required: true,
             default: '+8801700000000',
         },
         businessHours: {
