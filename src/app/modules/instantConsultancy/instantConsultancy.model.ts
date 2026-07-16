@@ -28,6 +28,7 @@ const instantConsultancySettingsSchema = new Schema<IInstantConsultancySettings>
     fee: { type: Number, default: INSTANT_CONSULTATION_FEE },
     durationMinutes: { type: Number, default: 10 },
     isEnabled: { type: Boolean, default: true },
+    noticeText: { type: String, default: '' },
   },
   { timestamps: true }
 );

@@ -101,6 +101,8 @@ const updateSettings = (payload) => __awaiter(void 0, void 0, void 0, function* 
             settings.durationMinutes = payload.durationMinutes;
         if (payload.isEnabled !== undefined)
             settings.isEnabled = payload.isEnabled;
+        if (payload.noticeText !== undefined)
+            settings.noticeText = payload.noticeText;
         yield settings.save();
     }
     return settings;

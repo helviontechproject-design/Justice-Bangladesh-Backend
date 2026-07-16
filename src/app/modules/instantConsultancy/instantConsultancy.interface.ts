@@ -15,6 +15,7 @@ export interface IInstantConsultancySettings extends Document {
   fee: number;
   durationMinutes: number;
   isEnabled: boolean;
+  noticeText?: string;
 }
 
 export interface IInstantConsultancyItem extends Document {

@@ -62,7 +62,7 @@ const getSettings = async () => {
   return settings;
 };
 
-const updateSettings = async (payload: { fee?: number; durationMinutes?: number; isEnabled?: boolean }) => {
+const updateSettings = async (payload: { fee?: number; durationMinutes?: number; isEnabled?: boolean; noticeText?: string }) => {
   let settings = await InstantConsultancySettingsModel.findOne();
   if (!settings) {
     settings = await InstantConsultancySettingsModel.create({ ...payload });
@@ -70,6 +70,7 @@ const updateSettings = async (payload: { fee?: number; durationMinutes?: number;
     if (payload.fee !== undefined) settings.fee = payload.fee;
     if (payload.durationMinutes !== undefined) settings.durationMinutes = payload.durationMinutes;
     if (payload.isEnabled !== undefined) settings.isEnabled = payload.isEnabled;
+    if (payload.noticeText !== undefined) settings.noticeText = payload.noticeText;
     await settings.save();
   }
   return settings;

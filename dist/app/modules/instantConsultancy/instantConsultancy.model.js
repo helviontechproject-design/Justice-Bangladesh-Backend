@@ -25,6 +25,7 @@ const instantConsultancySettingsSchema = new mongoose_1.Schema({
     fee: { type: Number, default: instantConsultancy_interface_1.INSTANT_CONSULTATION_FEE },
     durationMinutes: { type: Number, default: 10 },
     isEnabled: { type: Boolean, default: true },
+    noticeText: { type: String, default: '' },
 }, { timestamps: true });
 exports.InstantConsultancyModel = (0, mongoose_1.model)('InstantConsultancy', instantConsultancySchema);
 exports.InstantConsultancySettingsModel = (0, mongoose_1.model)('InstantConsultancySettings', instantConsultancySettingsSchema);
