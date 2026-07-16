@@ -64,9 +64,13 @@ const updatePlatformSettings = async (
     }
     if (payload.homePageCards) {
       console.log('Updating homePageCards:', payload.homePageCards);
-      settings.homePageCards = { 
-        ...settings.homePageCards, 
-        ...payload.homePageCards 
+      settings.homePageCards = {
+        instantConsultationCard: {
+          image: payload.homePageCards.instantConsultationCard?.image ?? settings.homePageCards?.instantConsultationCard?.image ?? '',
+        },
+        popularSpecialistCard: {
+          image: payload.homePageCards.popularSpecialistCard?.image ?? settings.homePageCards?.popularSpecialistCard?.image ?? '',
+        },
       };
     }
 

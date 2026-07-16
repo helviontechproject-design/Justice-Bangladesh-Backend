@@ -22,6 +22,7 @@ const getPlatformSettings = () => __awaiter(void 0, void 0, void 0, function* ()
 });
 // Update platform settings (admin only)
 const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     console.log('Received payload in service:', JSON.stringify(payload, null, 2));
     let settings = yield settings_model_1.PlatformSettings.findOne();
     if (!settings) {
@@ -65,7 +66,14 @@ const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, fu
         }
         if (payload.homePageCards) {
             console.log('Updating homePageCards:', payload.homePageCards);
-            settings.homePageCards = Object.assign(Object.assign({}, settings.homePageCards), payload.homePageCards);
+            settings.homePageCards = {
+                instantConsultationCard: {
+                    image: (_e = (_b = (_a = payload.homePageCards.instantConsultationCard) === null || _a === void 0 ? void 0 : _a.image) !== null && _b !== void 0 ? _b : (_d = (_c = settings.homePageCards) === null || _c === void 0 ? void 0 : _c.instantConsultationCard) === null || _d === void 0 ? void 0 : _d.image) !== null && _e !== void 0 ? _e : '',
+                },
+                popularSpecialistCard: {
+                    image: (_k = (_g = (_f = payload.homePageCards.popularSpecialistCard) === null || _f === void 0 ? void 0 : _f.image) !== null && _g !== void 0 ? _g : (_j = (_h = settings.homePageCards) === null || _h === void 0 ? void 0 : _h.popularSpecialistCard) === null || _j === void 0 ? void 0 : _j.image) !== null && _k !== void 0 ? _k : '',
+                },
+            };
         }
         yield settings.save();
         console.log('Settings saved successfully');
