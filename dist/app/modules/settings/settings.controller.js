@@ -41,29 +41,18 @@ const getPlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter
 }));
 // Update platform settings (admin only)
 const updatePlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('=== UPDATE SETTINGS REQUEST ===');
-    console.log('Raw body:', JSON.stringify(req.body, null, 2));
     if (!req.body || Object.keys(req.body).length === 0) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Request body cannot be empty');
     }
     // Remove MongoDB metadata fields if present
     const _a = req.body, { _id, __v, createdAt, updatedAt } = _a, updatePayload = __rest(_a, ["_id", "__v", "createdAt", "updatedAt"]);
-    console.log('Cleaned payload:', JSON.stringify(updatePayload, null, 2));
-    console.log('Removed fields:', { _id, __v, createdAt, updatedAt });
-    try {
-        const result = yield settings_service_1.settingsService.updatePlatformSettings(updatePayload);
-        console.log('Settings updated successfully');
-        (0, sendResponse_1.default)(res, {
-            statusCode: http_status_codes_1.StatusCodes.OK,
-            success: true,
-            message: 'Platform settings updated successfully',
-            data: result,
-        });
-    }
-    catch (error) {
-        console.error('Error updating settings:', error);
-        throw error;
-    }
+    const result = yield settings_service_1.settingsService.updatePlatformSettings(updatePayload);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        success: true,
+        message: 'Platform settings updated successfully',
+        data: result,
+    });
 }));
 exports.settingsController = {
     getPlatformSettings,

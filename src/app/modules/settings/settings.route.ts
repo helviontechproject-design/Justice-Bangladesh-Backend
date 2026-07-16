@@ -9,12 +9,12 @@ const router = express.Router();
 // Get platform settings (public - no auth required)
 router.get('/', settingsController.getPlatformSettings);
 
-// Update platform settings (super admin only - requires authentication and super_admin role)
+// Update platform settings (super admin only - no validation middleware, direct to controller)
 router.patch(
   '/',
   checkAuth('SUPER_ADMIN'),
-  validateRequest(settingsValidation.updatePlatformSettingsSchema),
   settingsController.updatePlatformSettings
 );
 
 export const settingsRoutes = router;
+

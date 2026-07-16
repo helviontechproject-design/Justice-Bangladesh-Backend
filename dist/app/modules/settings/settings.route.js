@@ -7,11 +7,9 @@ exports.settingsRoutes = void 0;
 const express_1 = __importDefault(require("express"));
 const settings_controller_1 = require("./settings.controller");
 const checkAuth_1 = require("../../middlewares/checkAuth");
-const validateRequest_1 = require("../../middlewares/validateRequest");
-const settings_validation_1 = require("./settings.validation");
 const router = express_1.default.Router();
 // Get platform settings (public - no auth required)
 router.get('/', settings_controller_1.settingsController.getPlatformSettings);
-// Update platform settings (super admin only - requires authentication and super_admin role)
-router.patch('/', (0, checkAuth_1.checkAuth)('SUPER_ADMIN'), (0, validateRequest_1.validateRequest)(settings_validation_1.settingsValidation.updatePlatformSettingsSchema), settings_controller_1.settingsController.updatePlatformSettings);
+// Update platform settings (super admin only - no validation middleware, direct to controller)
+router.patch('/', (0, checkAuth_1.checkAuth)('SUPER_ADMIN'), settings_controller_1.settingsController.updatePlatformSettings);
 exports.settingsRoutes = router;
