@@ -19,18 +19,33 @@ const getPlatformSettings = catchAsync(async (req: Request, res: Response) => {
 
 // Update platform settings (admin only)
 const updatePlatformSettings = catchAsync(async (req: Request, res: Response) => {
+  console.log('=== UPDATE SETTINGS REQUEST ===');
+  console.log('Raw body:', JSON.stringify(req.body, null, 2));
+  
   if (!req.body || Object.keys(req.body).length === 0) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Request body cannot be empty');
   }
 
-  const result = await settingsService.updatePlatformSettings(req.body);
+  // Remove MongoDB metadata fields if present
+  const { _id, __v, createdAt, updatedAt, ...updatePayload } = req.body;
+  
+  console.log('Cleaned payload:', JSON.stringify(updatePayload, null, 2));
+  console.log('Removed fields:', { _id, __v, createdAt, updatedAt });
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Platform settings updated successfully',
-    data: result,
-  });
+  try {
+    const result = await settingsService.updatePlatformSettings(updatePayload);
+    console.log('Settings updated successfully');
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Platform settings updated successfully',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    throw error;
+  }
 });
 
 export const settingsController = {
