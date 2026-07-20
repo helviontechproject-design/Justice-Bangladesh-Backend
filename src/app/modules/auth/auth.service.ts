@@ -333,6 +333,11 @@ export const verifyOTP = async (payload: { phone: string; otp?: string }) => {
     }
   }
 
+  // 🔍 DEBUG: Log OTP being verified in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[DEV] OTP Verification: phone=${phone}, otp=${payload.otp}, storedOtp=${user.otpCode}`);
+  }
+
   if (user.phoneNo) {
     const wasNotVerified = !user.isVerified;
     user.isVerified = true;
@@ -364,7 +369,7 @@ export const verifyOTP = async (payload: { phone: string; otp?: string }) => {
   }
 
   const tokens = createUserTokens(user);
-  return {
+  const responseData = {
     ...user.toObject(),
     client: user.client,
     lawyer: user.lawyer,
@@ -373,6 +378,14 @@ export const verifyOTP = async (payload: { phone: string; otp?: string }) => {
       refreshToken: tokens.refreshToken,
     },
   };
+
+  // 🔍 DEBUG: Send OTP in response for auto-fill in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[DEV] Returning OTP in response for auto-fill: ${user.otpCode}`);
+    (responseData as any).debugOtp = user.otpCode;
+  }
+
+  return responseData;
   // } else {
   //   throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid or expired OTP');
   // }
@@ -438,11 +451,18 @@ export const userLogin = async (payload: { phone: string }) => {
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
     await sendOTPViaSMS(phone, otp);
-    return {
+    
+    // 🔍 DEBUG: Send OTP in response for auto-fill in development
+    const response: any = {
       message: 'Verification code sent via SMS!',
       role: user.role,
       userId: user._id,
     };
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[DEV] Login OTP generated and sent: ${otp}`);
+      response.debugOtp = otp;
+    }
+    return response;
   }
 
   const tokens = createUserTokens(user);
@@ -475,10 +495,16 @@ export const resendOTP = async (payload: { phone: string }) => {
   await UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
   await sendOTPViaSMS(phone, otp);
 
-  return {
+  // 🔍 DEBUG: Send OTP in response for auto-fill in development
+  const response: any = {
     success: true,
     message: "New verification code sent via SMS!",
   };
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[DEV] Resent OTP: ${otp}`);
+    response.debugOtp = otp;
+  }
+  return response;
 };
 
 const getNewAccessToken = async (refreshToken: string) => {

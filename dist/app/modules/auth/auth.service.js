@@ -276,6 +276,10 @@ const verifyOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
             }
         }
     }
+    // 🔍 DEBUG: Log OTP being verified in development
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] OTP Verification: phone=${phone}, otp=${payload.otp}, storedOtp=${user.otpCode}`);
+    }
     if (user.phoneNo) {
         const wasNotVerified = !user.isVerified;
         user.isVerified = true;
@@ -305,10 +309,16 @@ const verifyOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
     const tokens = (0, createTokens_1.createUserTokens)(user);
-    return Object.assign(Object.assign({}, user.toObject()), { client: user.client, lawyer: user.lawyer, tokens: {
+    const responseData = Object.assign(Object.assign({}, user.toObject()), { client: user.client, lawyer: user.lawyer, tokens: {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
         } });
+    // 🔍 DEBUG: Send OTP in response for auto-fill in development
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] Returning OTP in response for auto-fill: ${user.otpCode}`);
+        responseData.debugOtp = user.otpCode;
+    }
+    return responseData;
     // } else {
     //   throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid or expired OTP');
     // }
@@ -368,11 +378,17 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
         yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
         yield sendOTPViaSMS(phone, otp);
-        return {
+        // 🔍 DEBUG: Send OTP in response for auto-fill in development
+        const response = {
             message: 'Verification code sent via SMS!',
             role: user.role,
             userId: user._id,
         };
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[DEV] Login OTP generated and sent: ${otp}`);
+            response.debugOtp = otp;
+        }
+        return response;
     }
     const tokens = (0, createTokens_1.createUserTokens)(user);
     return {
@@ -401,10 +417,16 @@ const resendOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
     yield sendOTPViaSMS(phone, otp);
-    return {
+    // 🔍 DEBUG: Send OTP in response for auto-fill in development
+    const response = {
         success: true,
         message: "New verification code sent via SMS!",
     };
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] Resent OTP: ${otp}`);
+        response.debugOtp = otp;
+    }
+    return response;
 });
 exports.resendOTP = resendOTP;
 const getNewAccessToken = (refreshToken) => __awaiter(void 0, void 0, void 0, function* () {
