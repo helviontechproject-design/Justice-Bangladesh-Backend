@@ -37,8 +37,8 @@ const createClientAccount = (0, catchAsync_1.catchAsync)((req, res, next) => __a
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
-        message: 'Client Account Created Successfully!',
-        data: me,
+        message: me.message || 'Client Account Created Successfully!',
+        data: me.data, // ← Use me.data, not me directly
     });
 }));
 const verifyOTP = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -56,8 +56,8 @@ const userLogin = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(voi
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
-        message: 'Data received Successfully!',
-        data: me,
+        message: me.message || 'Data received Successfully!',
+        data: me, // ← me already has debugOtp at root, keep it
     });
 }));
 const getNewAccessToken = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -189,7 +189,7 @@ const resendOTP = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(voi
         success: true,
         statusCode: http_status_codes_1.StatusCodes.OK,
         message: data.message,
-        data,
+        data: data, // ← data already has debugOtp at root
     });
 }));
 const firebasePhoneLogin = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {

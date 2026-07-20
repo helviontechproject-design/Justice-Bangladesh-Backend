@@ -186,6 +186,19 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
       await session.commitTransaction();
       session.endSession();
       await sendOTPViaSMS(phone, otp);
+      
+      // 🔍 DEBUG: Send OTP in response for auto-fill in development
+      const response: any = {
+        success: true,
+        message: OTP_ENABLED
+          ? 'Lawyer account created successfully. Verification code sent via SMS!'
+          : 'Lawyer account created successfully.',
+        data: { userId, lawyerId, debugOtp: otp },  // ← Include debugOtp
+      };
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] Lawyer signup OTP: ${otp}`);
+      }
+      return response;
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -290,6 +303,19 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
       await session.commitTransaction();
       session.endSession();
       await sendOTPViaSMS(phone, otp);
+      
+      // 🔍 DEBUG: Send OTP in response for auto-fill in development
+      const response: any = {
+        success: true,
+        message: OTP_ENABLED
+          ? 'Client account created successfully. Verification code sent via SMS!'
+          : 'Client account created successfully.',
+        data: { userId, clientId, debugOtp: otp },  // ← Include debugOtp here
+      };
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV] Client signup OTP: ${otp}`);
+      }
+      return response;
     } else {
       await session.commitTransaction();
       session.endSession();

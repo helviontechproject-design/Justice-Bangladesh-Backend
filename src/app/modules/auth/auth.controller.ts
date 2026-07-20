@@ -33,8 +33,8 @@ const createClientAccount = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: StatusCodes.OK,
-      message: 'Client Account Created Successfully!',
-      data: me,
+      message: me.message || 'Client Account Created Successfully!',
+      data: me.data,  // ← Use me.data, not me directly
     });
   }
 );
@@ -58,8 +58,8 @@ const userLogin = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: StatusCodes.OK,
-      message: 'Data received Successfully!',
-      data: me,
+      message: me.message || 'Data received Successfully!',
+      data: me,  // ← me already has debugOtp at root, keep it
     });
   }
 );
@@ -240,7 +240,7 @@ const resendOTP = catchAsync(
       success: true,
       statusCode: StatusCodes.OK,
       message: data.message,
-      data,
+      data: data,  // ← data already has debugOtp at root
     });
   }
 );
