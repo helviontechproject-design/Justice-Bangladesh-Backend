@@ -188,17 +188,19 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
       await sendOTPViaSMS(phone, otp);
       
       // 🔍 DEBUG: Send OTP in response for auto-fill in development
-      const response: any = {
-        success: true,
-        message: OTP_ENABLED
-          ? 'Lawyer account created successfully. Verification code sent via SMS!'
-          : 'Lawyer account created successfully.',
-        data: { userId, lawyerId, debugOtp: otp },  // ← Include debugOtp
-      };
       if (process.env.NODE_ENV !== 'production') {
         console.log(`[DEV] Lawyer signup OTP: ${otp}`);
       }
-      return response;
+      
+      return {
+        success: true,
+        message: 'Lawyer account created successfully. Verification code sent via SMS!',
+        data: { 
+          userId, 
+          lawyerId, 
+          debugOtp: otp  // ← Simple
+        },
+      };
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -206,9 +208,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
 
     return {
       success: true,
-      message: OTP_ENABLED
-        ? 'Lawyer account created successfully. Verification code sent via SMS!'
-        : 'Lawyer account created successfully.',
+      message: 'Lawyer account created successfully.',
       data: { userId, lawyerId },
     };
   } catch (error) {
@@ -305,17 +305,19 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
       await sendOTPViaSMS(phone, otp);
       
       // 🔍 DEBUG: Send OTP in response for auto-fill in development
-      const response: any = {
-        success: true,
-        message: OTP_ENABLED
-          ? 'Client account created successfully. Verification code sent via SMS!'
-          : 'Client account created successfully.',
-        data: { userId, clientId, debugOtp: otp },  // ← Include debugOtp here
-      };
       if (process.env.NODE_ENV !== 'production') {
         console.log(`[DEV] Client signup OTP: ${otp}`);
       }
-      return response;
+      
+      return {
+        success: true,
+        message: 'Client account created successfully. Verification code sent via SMS!',
+        data: { 
+          userId, 
+          clientId, 
+          debugOtp: otp  // ← Simple, no nested wrapper
+        },
+      };
     } else {
       await session.commitTransaction();
       session.endSession();
@@ -323,9 +325,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
 
     return {
       success: true,
-      message: OTP_ENABLED
-        ? 'Client account created successfully. Verification code sent via SMS!'
-        : 'Client account created successfully.',
+      message: 'Client account created successfully.',
       data: { userId, clientId },
     };
   } catch (error) {
@@ -479,16 +479,16 @@ export const userLogin = async (payload: { phone: string }) => {
     await sendOTPViaSMS(phone, otp);
     
     // 🔍 DEBUG: Send OTP in response for auto-fill in development
-    const response: any = {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[DEV] Login OTP generated: ${otp}`);
+    }
+    
+    return {
       message: 'Verification code sent via SMS!',
       role: user.role,
       userId: user._id,
+      debugOtp: otp,  // ← Simple, at root level
     };
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[DEV] Login OTP generated and sent: ${otp}`);
-      response.debugOtp = otp;
-    }
-    return response;
   }
 
   const tokens = createUserTokens(user);
@@ -522,15 +522,15 @@ export const resendOTP = async (payload: { phone: string }) => {
   await sendOTPViaSMS(phone, otp);
 
   // 🔍 DEBUG: Send OTP in response for auto-fill in development
-  const response: any = {
-    success: true,
-    message: "New verification code sent via SMS!",
-  };
   if (process.env.NODE_ENV !== 'production') {
     console.log(`[DEV] Resent OTP: ${otp}`);
-    response.debugOtp = otp;
   }
-  return response;
+
+  return {
+    success: true,
+    message: "New verification code sent via SMS!",
+    debugOtp: otp,  // ← Simple, at root level
+  };
 };
 
 const getNewAccessToken = async (refreshToken: string) => {

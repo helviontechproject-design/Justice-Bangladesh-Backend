@@ -158,17 +158,18 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             session.endSession();
             yield sendOTPViaSMS(phone, otp);
             // 🔍 DEBUG: Send OTP in response for auto-fill in development
-            const response = {
-                success: true,
-                message: OTP_ENABLED
-                    ? 'Lawyer account created successfully. Verification code sent via SMS!'
-                    : 'Lawyer account created successfully.',
-                data: { userId, lawyerId, debugOtp: otp }, // ← Include debugOtp
-            };
             if (process.env.NODE_ENV !== 'production') {
                 console.log(`[DEV] Lawyer signup OTP: ${otp}`);
             }
-            return response;
+            return {
+                success: true,
+                message: 'Lawyer account created successfully. Verification code sent via SMS!',
+                data: {
+                    userId,
+                    lawyerId,
+                    debugOtp: otp // ← Simple
+                },
+            };
         }
         else {
             yield session.commitTransaction();
@@ -176,9 +177,7 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         }
         return {
             success: true,
-            message: OTP_ENABLED
-                ? 'Lawyer account created successfully. Verification code sent via SMS!'
-                : 'Lawyer account created successfully.',
+            message: 'Lawyer account created successfully.',
             data: { userId, lawyerId },
         };
     }
@@ -248,17 +247,18 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             session.endSession();
             yield sendOTPViaSMS(phone, otp);
             // 🔍 DEBUG: Send OTP in response for auto-fill in development
-            const response = {
-                success: true,
-                message: OTP_ENABLED
-                    ? 'Client account created successfully. Verification code sent via SMS!'
-                    : 'Client account created successfully.',
-                data: { userId, clientId, debugOtp: otp }, // ← Include debugOtp here
-            };
             if (process.env.NODE_ENV !== 'production') {
                 console.log(`[DEV] Client signup OTP: ${otp}`);
             }
-            return response;
+            return {
+                success: true,
+                message: 'Client account created successfully. Verification code sent via SMS!',
+                data: {
+                    userId,
+                    clientId,
+                    debugOtp: otp // ← Simple, no nested wrapper
+                },
+            };
         }
         else {
             yield session.commitTransaction();
@@ -266,9 +266,7 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         }
         return {
             success: true,
-            message: OTP_ENABLED
-                ? 'Client account created successfully. Verification code sent via SMS!'
-                : 'Client account created successfully.',
+            message: 'Client account created successfully.',
             data: { userId, clientId },
         };
     }
@@ -403,16 +401,15 @@ const userLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
         yield sendOTPViaSMS(phone, otp);
         // 🔍 DEBUG: Send OTP in response for auto-fill in development
-        const response = {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[DEV] Login OTP generated: ${otp}`);
+        }
+        return {
             message: 'Verification code sent via SMS!',
             role: user.role,
             userId: user._id,
+            debugOtp: otp, // ← Simple, at root level
         };
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`[DEV] Login OTP generated and sent: ${otp}`);
-            response.debugOtp = otp;
-        }
-        return response;
     }
     const tokens = (0, createTokens_1.createUserTokens)(user);
     return {
@@ -442,15 +439,14 @@ const resendOTP = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     yield user_model_1.UserModel.findByIdAndUpdate(user._id, { otpCode: otp, otpExpiry });
     yield sendOTPViaSMS(phone, otp);
     // 🔍 DEBUG: Send OTP in response for auto-fill in development
-    const response = {
-        success: true,
-        message: "New verification code sent via SMS!",
-    };
     if (process.env.NODE_ENV !== 'production') {
         console.log(`[DEV] Resent OTP: ${otp}`);
-        response.debugOtp = otp;
     }
-    return response;
+    return {
+        success: true,
+        message: "New verification code sent via SMS!",
+        debugOtp: otp, // ← Simple, at root level
+    };
 });
 exports.resendOTP = resendOTP;
 const getNewAccessToken = (refreshToken) => __awaiter(void 0, void 0, void 0, function* () {
