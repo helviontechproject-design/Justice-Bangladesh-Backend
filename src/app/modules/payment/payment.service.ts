@@ -108,10 +108,17 @@ const successPayment = async (query: Record<string, string>) => {
   session.startTransaction();
 
   try {
+    const transactionId = query.transactionId;
+    
+    if (!transactionId) {
+      throw new AppError(StatusCodes.BAD_REQUEST, 'Transaction ID is required');
+    }
+
+    console.log('[Payment] Processing successful payment for transaction:', transactionId);
 
     // update payment  Status
     const updatedPayment = await Payment.findOneAndUpdate(
-      { transactionId: query.transactionId },
+      { transactionId },
       {
         status: PaymentStatus.PAID,
       },
@@ -119,8 +126,11 @@ const successPayment = async (query: Record<string, string>) => {
     );
 
     if (!updatedPayment) {
-      throw new AppError(401, 'Payment not found');
+      console.error('[Payment] Payment record not found for transaction:', transactionId);
+      throw new AppError(StatusCodes.NOT_FOUND, 'Payment not found');
     }
+    
+    console.log('[Payment] ✅ Payment status updated to PAID:', transactionId);
 
     // update Appointment Status 
     const updateAppointment = await Appointment.findByIdAndUpdate(

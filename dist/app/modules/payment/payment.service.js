@@ -97,13 +97,20 @@ const successPayment = (query) => __awaiter(void 0, void 0, void 0, function* ()
     const session = yield appointment_model_1.Appointment.startSession();
     session.startTransaction();
     try {
+        const transactionId = query.transactionId;
+        if (!transactionId) {
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Transaction ID is required');
+        }
+        console.log('[Payment] Processing successful payment for transaction:', transactionId);
         // update payment  Status
-        const updatedPayment = yield payment_model_1.Payment.findOneAndUpdate({ transactionId: query.transactionId }, {
+        const updatedPayment = yield payment_model_1.Payment.findOneAndUpdate({ transactionId }, {
             status: payment_interface_1.PaymentStatus.PAID,
         }, { new: true, session: session });
         if (!updatedPayment) {
-            throw new AppError_1.default(401, 'Payment not found');
+            console.error('[Payment] Payment record not found for transaction:', transactionId);
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Payment not found');
         }
+        console.log('[Payment] ✅ Payment status updated to PAID:', transactionId);
         // update Appointment Status 
         const updateAppointment = yield appointment_model_1.Appointment.findByIdAndUpdate(updatedPayment === null || updatedPayment === void 0 ? void 0 : updatedPayment.appointmentId, { status: appointment_interface_1.AppointmentStatus.PENDING, payment_Status: appointment_interface_1.AppointmentPaymentStatus.PAID }, { new: true, session });
         if (!updateAppointment) {
