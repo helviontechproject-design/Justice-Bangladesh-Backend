@@ -12,9 +12,11 @@ const getPlatformSettings = catchAsync(async (req: Request, res: Response) => {
   // Force ensure duration field exists in API response (fallback approach)
   const responseData = {
     ...result,
-    instantConsultancyDuration: result.instantConsultancyDuration ?? 10,
-    instantConsultancyNotice: result.instantConsultancyNotice ?? '',
+    instantConsultancyDuration: Number(result.instantConsultancyDuration) || 10,
+    instantConsultancyNotice: String(result.instantConsultancyNotice || ''),
   };
+
+  console.log('🔧 Final response data:', JSON.stringify(responseData, null, 2));
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
