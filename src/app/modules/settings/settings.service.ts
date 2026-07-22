@@ -79,8 +79,38 @@ const calculatePlatformFee = async (amount: number): Promise<number> => {
   return settings.platformFee.percentage; // Use percentage field as fixed amount
 };
 
+// One-time migration: ensure all new fields exist in MongoDB document
+const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] }> => {
+  const settings = await PlatformSettings.findOne();
+  if (!settings) {
+    await PlatformSettings.create({});
+    return { migrated: true, fields: ['created new document'] };
+  }
+
+  const updates: Record<string, unknown> = {};
+  const fields: string[] = [];
+
+  if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
+    updates['instantConsultancyNotice'] = '';
+    fields.push('instantConsultancyNotice');
+  }
+
+  if (fields.length === 0) {
+    return { migrated: false, fields: [] };
+  }
+
+  await PlatformSettings.findByIdAndUpdate(
+    settings._id,
+    { $set: updates },
+    { runValidators: false }
+  );
+
+  return { migrated: true, fields };
+};
+
 export const settingsService = {
   getPlatformSettings,
   updatePlatformSettings,
   calculatePlatformFee,
+  migrateSettings,
 };
