@@ -106,48 +106,44 @@ const calculatePlatformFee = async (amount: number): Promise<number> => {
 
 // One-time migration: ensure all new fields exist in MongoDB document
 const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] }> => {
-  const settings = await PlatformSettings.findOne();
+  console.log('🔧 Starting migration process...');
+  
+  // Try to find existing settings
+  let settings = await PlatformSettings.findOne();
+  console.log('Current settings found:', !!settings);
+  
   if (!settings) {
     console.log('🔧 Creating new settings document with all fields');
-    await PlatformSettings.create({
+    settings = await PlatformSettings.create({
       instantConsultancyNotice: '',
       instantConsultancyDuration: 10,
     });
     return { migrated: true, fields: ['created new document with all fields'] };
   }
 
-  const updates: Record<string, unknown> = {};
-  const fields: string[] = [];
-
-  // Force add missing fields
-  if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
-    updates['instantConsultancyNotice'] = '';
-    fields.push('instantConsultancyNotice');
-  }
-
-  if (settings.instantConsultancyDuration === undefined || settings.instantConsultancyDuration === null || typeof settings.instantConsultancyDuration !== 'number') {
-    updates['instantConsultancyDuration'] = 10;
-    fields.push('instantConsultancyDuration');
-  }
-
-  if (fields.length === 0) {
-    return { migrated: false, fields: [] };
-  }
-
-  console.log('🔧 Force migrating settings:', updates);
-  
-  await PlatformSettings.updateOne(
+  // Force add the duration field using raw MongoDB update
+  const result = await PlatformSettings.updateOne(
     { _id: settings._id },
     { 
-      $set: updates,
-      $unset: {} 
-    },
-    { runValidators: false }
+      $set: { 
+        instantConsultancyDuration: 10,
+        instantConsultancyNotice: settings.instantConsultancyNotice || ''
+      }
+    }
   );
-
-  console.log('✅ Migration completed for fields:', fields);
   
-  return { migrated: true, fields };
+  console.log('🔧 Direct MongoDB update result:', result);
+  
+  // Verify the update worked
+  const updated = await PlatformSettings.findById(settings._id);
+  console.log('✅ After update - duration field:', updated?.instantConsultancyDuration);
+  
+  return { 
+    migrated: true, 
+    fields: ['forcefully added instantConsultancyDuration'],
+    updateResult: result,
+    hasField: !!updated?.instantConsultancyDuration
+  };
 };
 
 export const settingsService = {
