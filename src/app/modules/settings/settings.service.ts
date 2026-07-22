@@ -10,6 +10,16 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
     settings = await PlatformSettings.create({});
   }
 
+  // Ensure new fields exist on legacy documents (migration-safe)
+  const needsUpdate: Record<string, unknown> = {};
+  if (settings.instantConsultancyNotice === undefined) {
+    needsUpdate['instantConsultancyNotice'] = '';
+  }
+  if (Object.keys(needsUpdate).length > 0) {
+    await PlatformSettings.findByIdAndUpdate(settings._id, { $set: needsUpdate });
+    settings = await PlatformSettings.findById(settings._id) as typeof settings;
+  }
+
   return settings;
 };
 
