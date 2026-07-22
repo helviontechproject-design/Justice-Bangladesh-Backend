@@ -159,6 +159,11 @@ const platformSettingsSchema = new mongoose_1.Schema({
             },
         },
     },
+    // Instant Consultancy Notice - Marquee text shown in Flutter app (leave empty to hide)
+    instantConsultancyNotice: {
+        type: String,
+        default: '',
+    },
 }, {
     timestamps: true,
 });

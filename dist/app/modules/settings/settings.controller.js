@@ -54,7 +54,18 @@ const updatePlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awai
         data: result,
     });
 }));
+// One-time migration: add missing fields to existing MongoDB document
+const migrateSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield settings_service_1.settingsService.migrateSettings();
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        success: true,
+        message: 'Migration completed',
+        data: result,
+    });
+}));
 exports.settingsController = {
     getPlatformSettings,
     updatePlatformSettings,
+    migrateSettings,
 };

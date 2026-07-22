@@ -18,22 +18,38 @@ const getPlatformSettings = () => __awaiter(void 0, void 0, void 0, function* ()
     if (!settings) {
         settings = yield settings_model_1.PlatformSettings.create({});
     }
+    // Ensure new fields exist on legacy documents (migration-safe)
+    const needsUpdate = {};
+    if (settings.instantConsultancyNotice === undefined) {
+        needsUpdate['instantConsultancyNotice'] = '';
+    }
+    if (Object.keys(needsUpdate).length > 0) {
+        yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: needsUpdate });
+        settings = (yield settings_model_1.PlatformSettings.findById(settings._id));
+    }
     return settings;
 });
 // Update platform settings (admin only)
 const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         let settings = yield settings_model_1.PlatformSettings.findOne();
         if (!settings) {
-            // Create if doesn't exist
             settings = yield settings_model_1.PlatformSettings.create(payload);
             return settings;
         }
-        // Use findByIdAndUpdate with runValidators: false to bypass schema validation
-        const updatedSettings = yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: payload }, {
-            new: true,
-            runValidators: false // Disable validation on update
-        });
+        // Sanitize payload — remove undefined values so $set doesn't skip them
+        const sanitized = {};
+        for (const [key, value] of Object.entries(payload)) {
+            if (value !== undefined) {
+                sanitized[key] = value;
+            }
+        }
+        // Always persist instantConsultancyNotice even if empty string
+        if ('instantConsultancyNotice' in payload) {
+            sanitized['instantConsultancyNotice'] = (_a = payload.instantConsultancyNotice) !== null && _a !== void 0 ? _a : '';
+        }
+        const updatedSettings = yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: sanitized }, { new: true, runValidators: false });
         return updatedSettings || settings;
     }
     catch (error) {
@@ -56,8 +72,28 @@ const calculatePlatformFee = (amount) => __awaiter(void 0, void 0, void 0, funct
     // For FIXED type (future implementation)
     return settings.platformFee.percentage; // Use percentage field as fixed amount
 });
+// One-time migration: ensure all new fields exist in MongoDB document
+const migrateSettings = () => __awaiter(void 0, void 0, void 0, function* () {
+    const settings = yield settings_model_1.PlatformSettings.findOne();
+    if (!settings) {
+        yield settings_model_1.PlatformSettings.create({});
+        return { migrated: true, fields: ['created new document'] };
+    }
+    const updates = {};
+    const fields = [];
+    if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
+        updates['instantConsultancyNotice'] = '';
+        fields.push('instantConsultancyNotice');
+    }
+    if (fields.length === 0) {
+        return { migrated: false, fields: [] };
+    }
+    yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: updates }, { runValidators: false });
+    return { migrated: true, fields };
+});
 exports.settingsService = {
     getPlatformSettings,
     updatePlatformSettings,
     calculatePlatformFee,
+    migrateSettings,
 };
