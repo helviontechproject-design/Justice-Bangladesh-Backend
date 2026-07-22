@@ -167,6 +167,12 @@ const platformSettingsSchema = new Schema<IPlatformSettings>(
         },
       },
     },
+
+    // Instant Consultancy Notice - Marquee text shown in Flutter app
+    instantConsultancyNotice: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

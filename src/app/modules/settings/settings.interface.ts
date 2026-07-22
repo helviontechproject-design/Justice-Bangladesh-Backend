@@ -64,6 +64,9 @@ export interface IPlatformSettings {
     };
   };
 
+  // Instant Consultancy Notice - Marquee text shown in Flutter app
+  instantConsultancyNotice?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
