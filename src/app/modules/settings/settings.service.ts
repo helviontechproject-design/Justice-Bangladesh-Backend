@@ -12,13 +12,14 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
 
   // Ensure new fields exist on legacy documents (migration-safe)
   const needsUpdate: Record<string, unknown> = {};
-  if (settings.instantConsultancyNotice === undefined) {
+  if (!settings.instantConsultancyNotice && settings.instantConsultancyNotice !== '') {
     needsUpdate['instantConsultancyNotice'] = '';
   }
-  if (settings.instantConsultancyDuration === undefined) {
+  if (!settings.instantConsultancyDuration && settings.instantConsultancyDuration !== 0) {
     needsUpdate['instantConsultancyDuration'] = 10;
   }
   if (Object.keys(needsUpdate).length > 0) {
+    console.log('Updating settings with missing fields:', needsUpdate);
     await PlatformSettings.findByIdAndUpdate(settings._id, { $set: needsUpdate });
     settings = await PlatformSettings.findById(settings._id) as typeof settings;
   }
@@ -97,12 +98,12 @@ const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] 
   const updates: Record<string, unknown> = {};
   const fields: string[] = [];
 
-  if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
+  if (!settings.instantConsultancyNotice && settings.instantConsultancyNotice !== '') {
     updates['instantConsultancyNotice'] = '';
     fields.push('instantConsultancyNotice');
   }
 
-  if (settings.instantConsultancyDuration === undefined || settings.instantConsultancyDuration === null) {
+  if (!settings.instantConsultancyDuration && settings.instantConsultancyDuration !== 0) {
     updates['instantConsultancyDuration'] = 10;
     fields.push('instantConsultancyDuration');
   }
