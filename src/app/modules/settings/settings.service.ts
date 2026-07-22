@@ -8,40 +8,24 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
   // If no settings exist, create default settings
   if (!settings) {
     settings = await PlatformSettings.create({
-      instantConsultancyDuration: 10, // Add duration field on creation
+      instantConsultancyDuration: 10,
     });
   }
 
-  // Force update missing fields (aggressive migration)
-  const updates: Record<string, unknown> = {};
-  let needsUpdate = false;
-
-  if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
-    updates['instantConsultancyNotice'] = '';
-    needsUpdate = true;
+  // Convert to plain object and force add missing fields
+  const settingsObj = settings.toObject();
+  
+  // Always ensure these fields exist in response
+  if (settingsObj.instantConsultancyDuration === undefined || settingsObj.instantConsultancyDuration === null || typeof settingsObj.instantConsultancyDuration !== 'number') {
+    settingsObj.instantConsultancyDuration = 10;
   }
   
-  if (settings.instantConsultancyDuration === undefined || settings.instantConsultancyDuration === null || typeof settings.instantConsultancyDuration !== 'number') {
-    updates['instantConsultancyDuration'] = 10;
-    needsUpdate = true;
+  if (settingsObj.instantConsultancyNotice === undefined || settingsObj.instantConsultancyNotice === null) {
+    settingsObj.instantConsultancyNotice = '';
   }
 
-  if (needsUpdate) {
-    console.log('🔧 Force updating settings with missing fields:', updates);
-    await PlatformSettings.updateOne(
-      { _id: settings._id }, 
-      { 
-        $set: updates,
-        $unset: {} // Ensure no undefined fields
-      },
-      { upsert: false }
-    );
-    // Re-fetch to get updated document
-    settings = await PlatformSettings.findById(settings._id) as typeof settings;
-    console.log('✅ Updated settings:', settings.toObject());
-  }
-
-  return settings;
+  return settingsObj as IPlatformSettings;
+};
 };
 
 // Update platform settings (admin only)
