@@ -31,19 +31,26 @@ const updatePlatformSettings = async (
     let settings = await PlatformSettings.findOne();
 
     if (!settings) {
-      // Create if doesn't exist
       settings = await PlatformSettings.create(payload);
       return settings;
     }
 
-    // Use findByIdAndUpdate with runValidators: false to bypass schema validation
+    // Sanitize payload — remove undefined values so $set doesn't skip them
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    }
+    // Always persist instantConsultancyNotice even if empty string
+    if ('instantConsultancyNotice' in payload) {
+      sanitized['instantConsultancyNotice'] = payload.instantConsultancyNotice ?? '';
+    }
+
     const updatedSettings = await PlatformSettings.findByIdAndUpdate(
       settings._id,
-      { $set: payload },
-      { 
-        new: true,
-        runValidators: false // Disable validation on update
-      }
+      { $set: sanitized },
+      { new: true, runValidators: false }
     );
 
     return updatedSettings || settings;
