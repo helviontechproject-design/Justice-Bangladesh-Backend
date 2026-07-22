@@ -9,11 +9,18 @@ import AppError from '../../errorHelpers/AppError';
 const getPlatformSettings = catchAsync(async (req: Request, res: Response) => {
   const result = await settingsService.getPlatformSettings();
 
+  // Force ensure duration field exists in API response (fallback approach)
+  const responseData = {
+    ...result,
+    instantConsultancyDuration: result.instantConsultancyDuration ?? 10,
+    instantConsultancyNotice: result.instantConsultancyNotice ?? '',
+  };
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Platform settings retrieved successfully',
-    data: result,
+    data: responseData,
   });
 });
 
