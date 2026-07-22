@@ -15,6 +15,9 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
   if (settings.instantConsultancyNotice === undefined) {
     needsUpdate['instantConsultancyNotice'] = '';
   }
+  if (settings.instantConsultancyDuration === undefined) {
+    needsUpdate['instantConsultancyDuration'] = 10;
+  }
   if (Object.keys(needsUpdate).length > 0) {
     await PlatformSettings.findByIdAndUpdate(settings._id, { $set: needsUpdate });
     settings = await PlatformSettings.findById(settings._id) as typeof settings;
@@ -45,6 +48,10 @@ const updatePlatformSettings = async (
     // Always persist instantConsultancyNotice even if empty string
     if ('instantConsultancyNotice' in payload) {
       sanitized['instantConsultancyNotice'] = payload.instantConsultancyNotice ?? '';
+    }
+    // Always persist instantConsultancyDuration
+    if ('instantConsultancyDuration' in payload) {
+      sanitized['instantConsultancyDuration'] = payload.instantConsultancyDuration ?? 10;
     }
 
     const updatedSettings = await PlatformSettings.findByIdAndUpdate(
@@ -93,6 +100,11 @@ const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] 
   if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
     updates['instantConsultancyNotice'] = '';
     fields.push('instantConsultancyNotice');
+  }
+
+  if (settings.instantConsultancyDuration === undefined || settings.instantConsultancyDuration === null) {
+    updates['instantConsultancyDuration'] = 10;
+    fields.push('instantConsultancyDuration');
   }
 
   if (fields.length === 0) {

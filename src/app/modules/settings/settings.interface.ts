@@ -67,6 +67,9 @@ export interface IPlatformSettings {
   // Instant Consultancy Notice - Marquee text shown in Flutter app
   instantConsultancyNotice?: string;
 
+  // Instant Consultancy Duration - Call duration in minutes
+  instantConsultancyDuration?: number;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
