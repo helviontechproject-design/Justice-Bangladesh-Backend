@@ -7,21 +7,38 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
 
   // If no settings exist, create default settings
   if (!settings) {
-    settings = await PlatformSettings.create({});
+    settings = await PlatformSettings.create({
+      instantConsultancyDuration: 10, // Add duration field on creation
+    });
   }
 
-  // Ensure new fields exist on legacy documents (migration-safe)
-  const needsUpdate: Record<string, unknown> = {};
-  if (!settings.instantConsultancyNotice && settings.instantConsultancyNotice !== '') {
-    needsUpdate['instantConsultancyNotice'] = '';
+  // Force update missing fields (aggressive migration)
+  const updates: Record<string, unknown> = {};
+  let needsUpdate = false;
+
+  if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
+    updates['instantConsultancyNotice'] = '';
+    needsUpdate = true;
   }
-  if (!settings.instantConsultancyDuration && settings.instantConsultancyDuration !== 0) {
-    needsUpdate['instantConsultancyDuration'] = 10;
+  
+  if (settings.instantConsultancyDuration === undefined || settings.instantConsultancyDuration === null || typeof settings.instantConsultancyDuration !== 'number') {
+    updates['instantConsultancyDuration'] = 10;
+    needsUpdate = true;
   }
-  if (Object.keys(needsUpdate).length > 0) {
-    console.log('Updating settings with missing fields:', needsUpdate);
-    await PlatformSettings.findByIdAndUpdate(settings._id, { $set: needsUpdate });
+
+  if (needsUpdate) {
+    console.log('🔧 Force updating settings with missing fields:', updates);
+    await PlatformSettings.updateOne(
+      { _id: settings._id }, 
+      { 
+        $set: updates,
+        $unset: {} // Ensure no undefined fields
+      },
+      { upsert: false }
+    );
+    // Re-fetch to get updated document
     settings = await PlatformSettings.findById(settings._id) as typeof settings;
+    console.log('✅ Updated settings:', settings.toObject());
   }
 
   return settings;
@@ -46,13 +63,13 @@ const updatePlatformSettings = async (
         sanitized[key] = value;
       }
     }
-    // Always persist instantConsultancyNotice even if empty string
+    // Always persist both fields
     if ('instantConsultancyNotice' in payload) {
       sanitized['instantConsultancyNotice'] = payload.instantConsultancyNotice ?? '';
     }
-    // Always persist instantConsultancyDuration
     if ('instantConsultancyDuration' in payload) {
-      sanitized['instantConsultancyDuration'] = payload.instantConsultancyDuration ?? 10;
+      const duration = payload.instantConsultancyDuration;
+      sanitized['instantConsultancyDuration'] = (typeof duration === 'number' && duration >= 5 && duration <= 60) ? duration : 10;
     }
 
     const updatedSettings = await PlatformSettings.findByIdAndUpdate(
@@ -91,19 +108,24 @@ const calculatePlatformFee = async (amount: number): Promise<number> => {
 const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] }> => {
   const settings = await PlatformSettings.findOne();
   if (!settings) {
-    await PlatformSettings.create({});
-    return { migrated: true, fields: ['created new document'] };
+    console.log('🔧 Creating new settings document with all fields');
+    await PlatformSettings.create({
+      instantConsultancyNotice: '',
+      instantConsultancyDuration: 10,
+    });
+    return { migrated: true, fields: ['created new document with all fields'] };
   }
 
   const updates: Record<string, unknown> = {};
   const fields: string[] = [];
 
-  if (!settings.instantConsultancyNotice && settings.instantConsultancyNotice !== '') {
+  // Force add missing fields
+  if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
     updates['instantConsultancyNotice'] = '';
     fields.push('instantConsultancyNotice');
   }
 
-  if (!settings.instantConsultancyDuration && settings.instantConsultancyDuration !== 0) {
+  if (settings.instantConsultancyDuration === undefined || settings.instantConsultancyDuration === null || typeof settings.instantConsultancyDuration !== 'number') {
     updates['instantConsultancyDuration'] = 10;
     fields.push('instantConsultancyDuration');
   }
@@ -112,12 +134,19 @@ const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] 
     return { migrated: false, fields: [] };
   }
 
-  await PlatformSettings.findByIdAndUpdate(
-    settings._id,
-    { $set: updates },
+  console.log('🔧 Force migrating settings:', updates);
+  
+  await PlatformSettings.updateOne(
+    { _id: settings._id },
+    { 
+      $set: updates,
+      $unset: {} 
+    },
     { runValidators: false }
   );
 
+  console.log('✅ Migration completed for fields:', fields);
+  
   return { migrated: true, fields };
 };
 
