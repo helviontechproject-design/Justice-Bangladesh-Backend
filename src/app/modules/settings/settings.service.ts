@@ -26,7 +26,6 @@ const getPlatformSettings = async (): Promise<IPlatformSettings> => {
 
   return settingsObj as IPlatformSettings;
 };
-};
 
 // Update platform settings (admin only)
 const updatePlatformSettings = async (
@@ -124,9 +123,7 @@ const migrateSettings = async (): Promise<{ migrated: boolean; fields: string[] 
   
   return { 
     migrated: true, 
-    fields: ['forcefully added instantConsultancyDuration'],
-    updateResult: result,
-    hasField: !!updated?.instantConsultancyDuration
+    fields: ['forcefully added instantConsultancyDuration']
   };
 };
 

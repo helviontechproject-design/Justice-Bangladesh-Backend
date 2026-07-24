@@ -16,18 +16,20 @@ const getPlatformSettings = () => __awaiter(void 0, void 0, void 0, function* ()
     let settings = yield settings_model_1.PlatformSettings.findOne();
     // If no settings exist, create default settings
     if (!settings) {
-        settings = yield settings_model_1.PlatformSettings.create({});
+        settings = yield settings_model_1.PlatformSettings.create({
+            instantConsultancyDuration: 10,
+        });
     }
-    // Ensure new fields exist on legacy documents (migration-safe)
-    const needsUpdate = {};
-    if (settings.instantConsultancyNotice === undefined) {
-        needsUpdate['instantConsultancyNotice'] = '';
+    // Convert to plain object and force add missing fields
+    const settingsObj = settings.toObject();
+    // Always ensure these fields exist in response
+    if (settingsObj.instantConsultancyDuration === undefined || settingsObj.instantConsultancyDuration === null || typeof settingsObj.instantConsultancyDuration !== 'number') {
+        settingsObj.instantConsultancyDuration = 10;
     }
-    if (Object.keys(needsUpdate).length > 0) {
-        yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: needsUpdate });
-        settings = (yield settings_model_1.PlatformSettings.findById(settings._id));
+    if (settingsObj.instantConsultancyNotice === undefined || settingsObj.instantConsultancyNotice === null) {
+        settingsObj.instantConsultancyNotice = '';
     }
-    return settings;
+    return settingsObj;
 });
 // Update platform settings (admin only)
 const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -45,9 +47,13 @@ const updatePlatformSettings = (payload) => __awaiter(void 0, void 0, void 0, fu
                 sanitized[key] = value;
             }
         }
-        // Always persist instantConsultancyNotice even if empty string
+        // Always persist both fields
         if ('instantConsultancyNotice' in payload) {
             sanitized['instantConsultancyNotice'] = (_a = payload.instantConsultancyNotice) !== null && _a !== void 0 ? _a : '';
+        }
+        if ('instantConsultancyDuration' in payload) {
+            const duration = payload.instantConsultancyDuration;
+            sanitized['instantConsultancyDuration'] = (typeof duration === 'number' && duration >= 5 && duration <= 60) ? duration : 10;
         }
         const updatedSettings = yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: sanitized }, { new: true, runValidators: false });
         return updatedSettings || settings;
@@ -74,22 +80,33 @@ const calculatePlatformFee = (amount) => __awaiter(void 0, void 0, void 0, funct
 });
 // One-time migration: ensure all new fields exist in MongoDB document
 const migrateSettings = () => __awaiter(void 0, void 0, void 0, function* () {
-    const settings = yield settings_model_1.PlatformSettings.findOne();
+    console.log('🔧 Starting migration process...');
+    // Try to find existing settings
+    let settings = yield settings_model_1.PlatformSettings.findOne();
+    console.log('Current settings found:', !!settings);
     if (!settings) {
-        yield settings_model_1.PlatformSettings.create({});
-        return { migrated: true, fields: ['created new document'] };
+        console.log('🔧 Creating new settings document with all fields');
+        settings = yield settings_model_1.PlatformSettings.create({
+            instantConsultancyNotice: '',
+            instantConsultancyDuration: 10,
+        });
+        return { migrated: true, fields: ['created new document with all fields'] };
     }
-    const updates = {};
-    const fields = [];
-    if (settings.instantConsultancyNotice === undefined || settings.instantConsultancyNotice === null) {
-        updates['instantConsultancyNotice'] = '';
-        fields.push('instantConsultancyNotice');
-    }
-    if (fields.length === 0) {
-        return { migrated: false, fields: [] };
-    }
-    yield settings_model_1.PlatformSettings.findByIdAndUpdate(settings._id, { $set: updates }, { runValidators: false });
-    return { migrated: true, fields };
+    // Force add the duration field using raw MongoDB update
+    const result = yield settings_model_1.PlatformSettings.updateOne({ _id: settings._id }, {
+        $set: {
+            instantConsultancyDuration: 10,
+            instantConsultancyNotice: settings.instantConsultancyNotice || ''
+        }
+    });
+    console.log('🔧 Direct MongoDB update result:', result);
+    // Verify the update worked
+    const updated = yield settings_model_1.PlatformSettings.findById(settings._id);
+    console.log('✅ After update - duration field:', updated === null || updated === void 0 ? void 0 : updated.instantConsultancyDuration);
+    return {
+        migrated: true,
+        fields: ['forcefully added instantConsultancyDuration']
+    };
 });
 exports.settingsService = {
     getPlatformSettings,

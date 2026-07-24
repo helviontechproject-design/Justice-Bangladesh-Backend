@@ -32,11 +32,14 @@ const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 // Get platform settings (public)
 const getPlatformSettings = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield settings_service_1.settingsService.getPlatformSettings();
+    // Force ensure duration field exists in API response (fallback approach)
+    const responseData = Object.assign(Object.assign({}, result), { instantConsultancyDuration: Number(result.instantConsultancyDuration) || 10, instantConsultancyNotice: String(result.instantConsultancyNotice || '') });
+    console.log('🔧 Final response data:', JSON.stringify(responseData, null, 2));
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_codes_1.StatusCodes.OK,
         success: true,
         message: 'Platform settings retrieved successfully',
-        data: result,
+        data: responseData,
     });
 }));
 // Update platform settings (admin only)

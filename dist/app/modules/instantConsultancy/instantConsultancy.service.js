@@ -145,6 +145,15 @@ const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, 
     else {
         console.log('ℹ️ No itemId provided - Using default settings fee:', consultationFee);
     }
+    // ← NEW: Use client-provided amount if available (accounts for duration-based extra charges)
+    let totalAmount = consultationFee;
+    if (payload.amount !== undefined && payload.amount > 0) {
+        totalAmount = payload.amount;
+        console.log('💰 Using client-provided amount:', totalAmount, '(Duration:', payload.durationMinutes, 'minutes)');
+    }
+    else {
+        console.log('💰 Using calculated base fee:', totalAmount);
+    }
     const orderId = `IC-${Date.now()}-${client._id.toString().slice(-4)}`;
     // Create PayStation payment
     try {
@@ -157,7 +166,7 @@ const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, 
         const paystationPayload = {
             invoice_number: orderId,
             currency: 'BDT',
-            payment_amount: consultationFee, // Use determined fee (item fee or default)
+            payment_amount: totalAmount, // ← USE totalAmount (includes duration-based charges)
             reference: `Instant-Consultancy-${orderId}`,
             cust_name: userName,
             cust_phone: userPhoneNumber,
@@ -184,10 +193,11 @@ const initPayment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, 
             paymentUrl: (paystationPayment === null || paystationPayment === void 0 ? void 0 : paystationPayment.payment_url) || null,
             paymentID: orderId,
             orderId,
-            fee: consultationFee, // Return actual fee being charged
+            fee: totalAmount, // ← Return actual total fee (with duration charges)
             note: payload.note,
             documentUrls: payload.documentUrls,
             appointmentType: payload.appointmentType || 'Audio Call',
+            durationMinutes: payload.durationMinutes, // Include duration for reference
         };
     }
     catch (error) {

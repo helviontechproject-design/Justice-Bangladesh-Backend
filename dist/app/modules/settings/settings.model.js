@@ -164,6 +164,13 @@ const platformSettingsSchema = new mongoose_1.Schema({
         type: String,
         default: '',
     },
+    // Instant Consultancy Duration - Call duration in minutes
+    instantConsultancyDuration: {
+        type: Number,
+        min: 5,
+        max: 60,
+        default: 10,
+    },
 }, {
     timestamps: true,
 });
