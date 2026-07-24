@@ -20,6 +20,19 @@ const initiatePayment = catchAsync(async (req: Request, res: Response) => {
     return sendResponse(res, { success: false, statusCode: StatusCodes.NOT_FOUND, message: 'Service not found', data: null });
   }
 
+  // Get user details for PayStation
+  const userModel = require('../user/user.model').UserModel;
+  const userDetails = await userModel.findById(decodedUser.userId).select('+phoneNo');
+  
+  if (!userDetails?.phoneNo?.value) {
+    return sendResponse(res, {
+      success: false,
+      statusCode: StatusCodes.BAD_REQUEST,
+      message: 'Phone number is required to process payment',
+      data: null,
+    });
+  }
+
   if (!service.price || service.price === 0) {
     return sendResponse(res, {
       success: true,
@@ -37,9 +50,9 @@ const initiatePayment = catchAsync(async (req: Request, res: Response) => {
   const orderId = `SVC-${Date.now()}`;
   const paystationPayload = {
     currency: 'BDT',
-    cust_name: decodedUser.email || 'Client',
-    cust_phone: '',
-    cust_email: decodedUser.email || '',
+    cust_name: userDetails.email?.split('@')[0] || 'Client',
+    cust_phone: userDetails.phoneNo.value,
+    cust_email: userDetails.email || '',
     amount: service.price,
     payment_amount: service.price,
     invoice_number: orderId,

@@ -22,11 +22,23 @@ const paystation_service_1 = require("../payment/paystation/paystation.service")
 const service_model_1 = require("../service/service.model");
 // Initiate payment for service booking
 const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     const decodedUser = req.user;
     const { serviceId } = req.body;
     const service = yield service_model_1.ServiceModel.findById(serviceId);
     if (!service) {
         return (0, sendResponse_1.default)(res, { success: false, statusCode: http_status_codes_1.StatusCodes.NOT_FOUND, message: 'Service not found', data: null });
+    }
+    // Get user details for PayStation
+    const userModel = require('../user/user.model').UserModel;
+    const userDetails = yield userModel.findById(decodedUser.userId).select('+phoneNo');
+    if (!((_a = userDetails === null || userDetails === void 0 ? void 0 : userDetails.phoneNo) === null || _a === void 0 ? void 0 : _a.value)) {
+        return (0, sendResponse_1.default)(res, {
+            success: false,
+            statusCode: http_status_codes_1.StatusCodes.BAD_REQUEST,
+            message: 'Phone number is required to process payment',
+            data: null,
+        });
     }
     if (!service.price || service.price === 0) {
         return (0, sendResponse_1.default)(res, {
@@ -44,9 +56,9 @@ const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
     const orderId = `SVC-${Date.now()}`;
     const paystationPayload = {
         currency: 'BDT',
-        cust_name: decodedUser.email || 'Client',
-        cust_phone: '',
-        cust_email: decodedUser.email || '',
+        cust_name: ((_b = userDetails.email) === null || _b === void 0 ? void 0 : _b.split('@')[0]) || 'Client',
+        cust_phone: userDetails.phoneNo.value,
+        cust_email: userDetails.email || '',
         amount: service.price,
         payment_amount: service.price,
         invoice_number: orderId,
