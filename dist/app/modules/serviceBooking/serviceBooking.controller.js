@@ -40,14 +40,9 @@ const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
             data: null,
         });
     }
-    if (!(userDetails === null || userDetails === void 0 ? void 0 : userDetails.email)) {
-        return (0, sendResponse_1.default)(res, {
-            success: false,
-            statusCode: http_status_codes_1.StatusCodes.BAD_REQUEST,
-            message: 'Email is required to process payment',
-            data: null,
-        });
-    }
+    // Email can be empty string, use placeholder if not available
+    const customerEmail = (userDetails === null || userDetails === void 0 ? void 0 : userDetails.email) || `client${Date.now()}@justice.com`;
+    const customerName = ((_b = userDetails === null || userDetails === void 0 ? void 0 : userDetails.email) === null || _b === void 0 ? void 0 : _b.split('@')[0]) || `Client${Date.now()}`;
     if (!service.price || service.price === 0) {
         return (0, sendResponse_1.default)(res, {
             success: true,
@@ -64,9 +59,9 @@ const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
     const orderId = `SVC-${Date.now()}`;
     const paystationPayload = {
         currency: 'BDT',
-        cust_name: ((_b = userDetails.email) === null || _b === void 0 ? void 0 : _b.split('@')[0]) || 'Client',
+        cust_name: customerName,
         cust_phone: userDetails.phoneNo.value,
-        cust_email: userDetails.email,
+        cust_email: customerEmail,
         amount: service.price,
         payment_amount: service.price,
         invoice_number: orderId,

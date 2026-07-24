@@ -33,14 +33,9 @@ const initiatePayment = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  if (!userDetails?.email) {
-    return sendResponse(res, {
-      success: false,
-      statusCode: StatusCodes.BAD_REQUEST,
-      message: 'Email is required to process payment',
-      data: null,
-    });
-  }
+  // Email can be empty string, use placeholder if not available
+  const customerEmail = userDetails?.email || `client${Date.now()}@justice.com`;
+  const customerName = userDetails?.email?.split('@')[0] || `Client${Date.now()}`;
 
   if (!service.price || service.price === 0) {
     return sendResponse(res, {
@@ -59,9 +54,9 @@ const initiatePayment = catchAsync(async (req: Request, res: Response) => {
   const orderId = `SVC-${Date.now()}`;
   const paystationPayload = {
     currency: 'BDT',
-    cust_name: userDetails.email?.split('@')[0] || 'Client',
+    cust_name: customerName,
     cust_phone: userDetails.phoneNo.value,
-    cust_email: userDetails.email,
+    cust_email: customerEmail,
     amount: service.price,
     payment_amount: service.price,
     invoice_number: orderId,
