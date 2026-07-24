@@ -7,6 +7,73 @@ import { serviceBookingService } from './serviceBooking.service';
 import { ServiceBookingStatus } from './serviceBooking.interface';
 import { multerUpload } from '../../config/multer.config';
 import { uploadBufferToCloudinary } from '../../config/cloudinary.config';
+import { PayStationService } from '../payment/paystation/paystation.service';
+import { ServiceModel } from '../service/service.model';
+
+// Initiate payment for service booking
+const initiatePayment = catchAsync(async (req: Request, res: Response) => {
+  const decodedUser = req.user as JwtPayload;
+  const { serviceId } = req.body;
+
+  const service = await ServiceModel.findById(serviceId);
+  if (!service) {
+    return sendResponse(res, { success: false, statusCode: StatusCodes.NOT_FOUND, message: 'Service not found', data: null });
+  }
+
+  if (!service.price || service.price === 0) {
+    return sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'Free service - no payment required',
+      data: {
+        orderId: `SVC-${Date.now()}`,
+        paymentUrl: null,
+        isFree: true,
+      },
+    });
+  }
+
+  // Create PayStation payment
+  const orderId = `SVC-${Date.now()}`;
+  const paystationPayload = {
+    currency: 'BDT',
+    cust_name: decodedUser.email || 'Client',
+    cust_phone: '',
+    cust_email: decodedUser.email || '',
+    amount: service.price,
+    payment_amount: service.price,
+    invoice_number: orderId,
+    reference: `Service Booking: ${service.name}`,
+    return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/service-payment-callback`,
+    callback_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/v1/service-booking/payment-callback`,
+  };
+
+  console.log('💳 Initiating PayStation payment for Service:', orderId, 'Amount:', service.price);
+
+  const paystationPayment = await PayStationService.initiatePayment(paystationPayload);
+
+  if (!paystationPayment?.payment_url) {
+    return sendResponse(res, {
+      success: false,
+      statusCode: StatusCodes.BAD_GATEWAY,
+      message: 'Failed to initiate payment with PayStation',
+      data: null,
+    });
+  }
+
+  console.log('✅ PayStation payment initiated:', orderId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Payment initiated',
+    data: {
+      orderId,
+      paymentUrl: paystationPayment.payment_url,
+      amount: service.price,
+    },
+  });
+});
 
 const createApplication = catchAsync(async (req: Request, res: Response) => {
   const decodedUser = req.user as JwtPayload;
@@ -69,6 +136,7 @@ const getServiceStats = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const serviceBookingController = {
+  initiatePayment,
   createApplication,
   trackApplication,
   getMyApplications,

@@ -6,6 +6,9 @@ import { multerUpload } from '../../config/multer.config';
 
 const router = Router();
 
+// Client: initiate payment for service booking
+router.post('/init-payment', checkAuth(ERole.CLIENT), serviceBookingController.initiatePayment);
+
 // Client: submit application with documents
 router.post('/', checkAuth(ERole.CLIENT), multerUpload.array('documents', 10), serviceBookingController.createApplication);
 

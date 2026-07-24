@@ -18,6 +18,64 @@ const catchAsync_1 = require("../../utils/catchAsync");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const serviceBooking_service_1 = require("./serviceBooking.service");
 const cloudinary_config_1 = require("../../config/cloudinary.config");
+const paystation_service_1 = require("../payment/paystation/paystation.service");
+const service_model_1 = require("../service/service.model");
+// Initiate payment for service booking
+const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const decodedUser = req.user;
+    const { serviceId } = req.body;
+    const service = yield service_model_1.ServiceModel.findById(serviceId);
+    if (!service) {
+        return (0, sendResponse_1.default)(res, { success: false, statusCode: http_status_codes_1.StatusCodes.NOT_FOUND, message: 'Service not found', data: null });
+    }
+    if (!service.price || service.price === 0) {
+        return (0, sendResponse_1.default)(res, {
+            success: true,
+            statusCode: http_status_codes_1.StatusCodes.OK,
+            message: 'Free service - no payment required',
+            data: {
+                orderId: `SVC-${Date.now()}`,
+                paymentUrl: null,
+                isFree: true,
+            },
+        });
+    }
+    // Create PayStation payment
+    const orderId = `SVC-${Date.now()}`;
+    const paystationPayload = {
+        currency: 'BDT',
+        cust_name: decodedUser.email || 'Client',
+        cust_phone: '',
+        cust_email: decodedUser.email || '',
+        amount: service.price,
+        payment_amount: service.price,
+        invoice_number: orderId,
+        reference: `Service Booking: ${service.name}`,
+        return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/service-payment-callback`,
+        callback_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/v1/service-booking/payment-callback`,
+    };
+    console.log('💳 Initiating PayStation payment for Service:', orderId, 'Amount:', service.price);
+    const paystationPayment = yield paystation_service_1.PayStationService.initiatePayment(paystationPayload);
+    if (!(paystationPayment === null || paystationPayment === void 0 ? void 0 : paystationPayment.payment_url)) {
+        return (0, sendResponse_1.default)(res, {
+            success: false,
+            statusCode: http_status_codes_1.StatusCodes.BAD_GATEWAY,
+            message: 'Failed to initiate payment with PayStation',
+            data: null,
+        });
+    }
+    console.log('✅ PayStation payment initiated:', orderId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_codes_1.StatusCodes.OK,
+        message: 'Payment initiated',
+        data: {
+            orderId,
+            paymentUrl: paystationPayment.payment_url,
+            amount: service.price,
+        },
+    });
+}));
 const createApplication = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedUser = req.user;
     const { serviceId, transactionId, applicantName, applicantPhone, documents } = req.body;
@@ -68,6 +126,7 @@ const getServiceStats = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
     (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: 'Service stats', data: result });
 }));
 exports.serviceBookingController = {
+    initiatePayment,
     createApplication,
     trackApplication,
     getMyApplications,

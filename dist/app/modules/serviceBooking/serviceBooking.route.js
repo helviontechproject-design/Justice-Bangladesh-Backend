@@ -7,6 +7,8 @@ const user_interface_1 = require("../user/user.interface");
 const serviceBooking_controller_1 = require("./serviceBooking.controller");
 const multer_config_1 = require("../../config/multer.config");
 const router = (0, express_1.Router)();
+// Client: initiate payment for service booking
+router.post('/init-payment', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), serviceBooking_controller_1.serviceBookingController.initiatePayment);
 // Client: submit application with documents
 router.post('/', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), multer_config_1.multerUpload.array('documents', 10), serviceBooking_controller_1.serviceBookingController.createApplication);
 // Client: my applications
