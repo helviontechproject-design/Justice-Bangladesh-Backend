@@ -40,6 +40,14 @@ const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
             data: null,
         });
     }
+    if (!(userDetails === null || userDetails === void 0 ? void 0 : userDetails.email)) {
+        return (0, sendResponse_1.default)(res, {
+            success: false,
+            statusCode: http_status_codes_1.StatusCodes.BAD_REQUEST,
+            message: 'Email is required to process payment',
+            data: null,
+        });
+    }
     if (!service.price || service.price === 0) {
         return (0, sendResponse_1.default)(res, {
             success: true,
@@ -58,7 +66,7 @@ const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
         currency: 'BDT',
         cust_name: ((_b = userDetails.email) === null || _b === void 0 ? void 0 : _b.split('@')[0]) || 'Client',
         cust_phone: userDetails.phoneNo.value,
-        cust_email: userDetails.email || '',
+        cust_email: userDetails.email,
         amount: service.price,
         payment_amount: service.price,
         invoice_number: orderId,
@@ -66,7 +74,8 @@ const initiatePayment = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(voi
         return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/service-payment-callback`,
         callback_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/v1/service-booking/payment-callback`,
     };
-    console.log('💳 Initiating PayStation payment for Service:', orderId, 'Amount:', service.price);
+    console.log('💳 Initiating PayStation payment for Service:', orderId);
+    console.log('PayStation payload:', paystationPayload);
     const paystationPayment = yield paystation_service_1.PayStationService.initiatePayment(paystationPayload);
     if (!(paystationPayment === null || paystationPayment === void 0 ? void 0 : paystationPayment.payment_url)) {
         return (0, sendResponse_1.default)(res, {
