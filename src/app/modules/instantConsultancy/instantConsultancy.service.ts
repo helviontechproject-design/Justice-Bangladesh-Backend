@@ -5,6 +5,7 @@ import { RtcTokenBuilder, RtcRole } from 'agora-token';
 import AppError from '../../errorHelpers/AppError';
 import { ClientProfileModel } from '../client/client.model';
 import { LawyerProfileModel } from '../lawyer/lawyer.model';
+import { UserModel } from '../user/user.model';
 import { InstantConsultancyModel, InstantConsultancySettingsModel, InstantConsultancyItemModel } from './instantConsultancy.model';
 import { InstantConsultancyStatus, INSTANT_CONSULTATION_FEE } from './instantConsultancy.interface';
 import { envVars } from '../../config/env';
@@ -331,7 +332,7 @@ const acceptRequest = async (decodedUser: JwtPayload, requestId: string) => {
     { _id: requestId, status: InstantConsultancyStatus.WAITING },
     { lawyerId: (lawyer._id as any), status: InstantConsultancyStatus.ACCEPTED },
     { new: true }
-  );
+  ).populate('clientId');
 
   if (!updated) {
     throw new AppError(StatusCodes.CONFLICT, 'Request already accepted by another lawyer');
@@ -342,6 +343,40 @@ const acceptRequest = async (decodedUser: JwtPayload, requestId: string) => {
   const channelName = updated.channelName || requestId;
   const lawyerToken = buildToken(channelName, 2);
   const appId = envVars.AGORA_APP_ID || '';
+
+  // Send notification to client that lawyer has accepted
+  try {
+    const clientProfile = updated.clientId as any;
+    if (clientProfile?.userId) {
+      const clientUser = await UserModel.findById(clientProfile.userId);
+      const clientTokens: string[] = clientUser?.fcmTokens || [];
+      
+      if (clientTokens.length > 0) {
+        const lawyerProfile = lawyer as any;
+        const lawyerName = `${lawyerProfile?.profile_Details?.fast_name || ''} ${lawyerProfile?.profile_Details?.last_name || ''}`.trim() || 'A lawyer';
+        
+        await sendFCMToTokens(
+          clientTokens,
+          `${updated.appointmentType === 'Video Call' ? '📹' : '📞'} Lawyer Accepted Your Request`,
+          `${lawyerName} has accepted your ${updated.appointmentType.toLowerCase()} consultation request. Click to start the call.`,
+          undefined,
+          {
+            type: 'INSTANT_CONSULTATION_ACCEPTED',
+            requestId: requestId,
+            channelName,
+            callType: updated.appointmentType === 'Video Call' ? 'video' : 'audio',
+            appointmentId: requestId,
+            callSource: 'instant_consultancy',
+          },
+        );
+      }
+    }
+  } catch (err) {
+    console.log('⚠️ Error sending notification to client:', err);
+    // Don't throw - notification failure shouldn't block the acceptance
+  }
+
+  console.log(`✅ Instant Consultancy accepted. RequestID: ${requestId}, Lawyer: ${lawyer._id}, Client notified`);
 
   return {
     requestId,

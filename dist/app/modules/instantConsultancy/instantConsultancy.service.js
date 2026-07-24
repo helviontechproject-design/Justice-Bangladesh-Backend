@@ -52,6 +52,7 @@ const agora_token_1 = require("agora-token");
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const client_model_1 = require("../client/client.model");
 const lawyer_model_1 = require("../lawyer/lawyer.model");
+const user_model_1 = require("../user/user.model");
 const instantConsultancy_model_1 = require("./instantConsultancy.model");
 const instantConsultancy_interface_1 = require("./instantConsultancy.interface");
 const env_1 = require("../../config/env");
@@ -304,10 +305,11 @@ const uploadDocuments = (files) => __awaiter(void 0, void 0, void 0, function* (
     return files.map((f) => f.path).filter(Boolean);
 });
 const acceptRequest = (decodedUser, requestId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     const lawyer = yield lawyer_model_1.LawyerProfileModel.findOne({ userId: decodedUser.userId });
     if (!lawyer)
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Lawyer profile not found');
-    const updated = yield instantConsultancy_model_1.InstantConsultancyModel.findOneAndUpdate({ _id: requestId, status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING }, { lawyerId: lawyer._id, status: instantConsultancy_interface_1.InstantConsultancyStatus.ACCEPTED }, { new: true });
+    const updated = yield instantConsultancy_model_1.InstantConsultancyModel.findOneAndUpdate({ _id: requestId, status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING }, { lawyerId: lawyer._id, status: instantConsultancy_interface_1.InstantConsultancyStatus.ACCEPTED }, { new: true }).populate('clientId');
     if (!updated) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.CONFLICT, 'Request already accepted by another lawyer');
     }
@@ -316,6 +318,31 @@ const acceptRequest = (decodedUser, requestId) => __awaiter(void 0, void 0, void
     const channelName = updated.channelName || requestId;
     const lawyerToken = buildToken(channelName, 2);
     const appId = env_1.envVars.AGORA_APP_ID || '';
+    // Send notification to client that lawyer has accepted
+    try {
+        const clientProfile = updated.clientId;
+        if (clientProfile === null || clientProfile === void 0 ? void 0 : clientProfile.userId) {
+            const clientUser = yield user_model_1.UserModel.findById(clientProfile.userId);
+            const clientTokens = (clientUser === null || clientUser === void 0 ? void 0 : clientUser.fcmTokens) || [];
+            if (clientTokens.length > 0) {
+                const lawyerProfile = lawyer;
+                const lawyerName = `${((_a = lawyerProfile === null || lawyerProfile === void 0 ? void 0 : lawyerProfile.profile_Details) === null || _a === void 0 ? void 0 : _a.fast_name) || ''} ${((_b = lawyerProfile === null || lawyerProfile === void 0 ? void 0 : lawyerProfile.profile_Details) === null || _b === void 0 ? void 0 : _b.last_name) || ''}`.trim() || 'A lawyer';
+                yield (0, fcm_1.sendFCMToTokens)(clientTokens, `${updated.appointmentType === 'Video Call' ? '📹' : '📞'} Lawyer Accepted Your Request`, `${lawyerName} has accepted your ${updated.appointmentType.toLowerCase()} consultation request. Click to start the call.`, undefined, {
+                    type: 'INSTANT_CONSULTATION_ACCEPTED',
+                    requestId: requestId,
+                    channelName,
+                    callType: updated.appointmentType === 'Video Call' ? 'video' : 'audio',
+                    appointmentId: requestId,
+                    callSource: 'instant_consultancy',
+                });
+            }
+        }
+    }
+    catch (err) {
+        console.log('⚠️ Error sending notification to client:', err);
+        // Don't throw - notification failure shouldn't block the acceptance
+    }
+    console.log(`✅ Instant Consultancy accepted. RequestID: ${requestId}, Lawyer: ${lawyer._id}, Client notified`);
     return {
         requestId,
         channelName,

@@ -64,6 +64,7 @@ const paystation_service_1 = require("../payment/paystation/paystation.service")
 const conversation_model_1 = require("../chat/conversation/conversation.model");
 const user_model_1 = require("../user/user.model");
 const notification_helper_1 = require("../notification/notification.helper");
+const instantConsultancy_model_1 = require("../instantConsultancy/instantConsultancy.model");
 const createAppointment = (decodedUser, payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d;
     if (!decodedUser.userId) {
@@ -329,7 +330,8 @@ const getMyAppointments = (decodedUser, query) => __awaiter(void 0, void 0, void
         yield user_model_1.UserModel.findByIdAndUpdate(decodedUser.userId, { client: client._id });
         filterQuery = { clientId: client._id };
     }
-    const appointments = appointment_model_1.Appointment.find(filterQuery)
+    // Fetch regular appointments
+    const appointments = yield appointment_model_1.Appointment.find(filterQuery)
         .populate({
         path: 'lawyerId',
         select: '_id profile_Details userId',
@@ -340,16 +342,48 @@ const getMyAppointments = (decodedUser, query) => __awaiter(void 0, void 0, void
     })
         .populate('clientId', '_id profileInfo')
         .populate('paymentId', '_id amount type status description createdAt updatedAt')
-        .sort({ createdAt: -1 });
-    const queryBuilder = new QueryBuilder_1.QueryBuilder(appointments, query);
-    const myAppointments = queryBuilder.filter().paginate();
-    const [data, meta] = yield Promise.all([
-        myAppointments.build().exec(),
-        queryBuilder.getMeta(),
-    ]);
+        .lean()
+        .exec();
+    // Add type field for regular appointments
+    const appointmentsWithType = appointments.map(apt => (Object.assign(Object.assign({}, apt), { type: 'appointment' })));
+    // Fetch instant consultancy requests (for clients only)
+    let instantConsultancyRequests = [];
+    if (client) {
+        instantConsultancyRequests = yield instantConsultancy_model_1.InstantConsultancyModel.find({
+            clientId: client._id,
+        })
+            .populate('categoryId', '_id name')
+            .lean()
+            .exec();
+        // Format instant consultancy requests to match appointment structure
+        instantConsultancyRequests = instantConsultancyRequests.map(req => ({
+            _id: req._id,
+            type: 'instant_consultancy',
+            appointmentType: req.appointmentType,
+            status: req.status,
+            fee: req.fee,
+            note: req.note,
+            documents: req.documents,
+            channelName: req.channelName,
+            paymentStatus: req.paymentStatus,
+            paystationInvoiceNumber: req.paystationInvoiceNumber,
+            paystationTransactionId: req.paystationTransactionId,
+            categoryId: req.categoryId,
+            createdAt: req.createdAt,
+            updatedAt: req.updatedAt,
+        }));
+    }
+    // Combine and sort all bookings by createdAt descending
+    const allBookings = [...appointmentsWithType, ...instantConsultancyRequests]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return {
-        data,
-        meta,
+        data: allBookings,
+        meta: {
+            total: allBookings.length,
+            page: 1,
+            limit: allBookings.length,
+            pages: 1,
+        },
     };
 });
 const getSingleAppointment = (id, decodedUser) => __awaiter(void 0, void 0, void 0, function* () {

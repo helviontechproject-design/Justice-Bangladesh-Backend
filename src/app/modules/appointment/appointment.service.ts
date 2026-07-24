@@ -22,6 +22,7 @@ import { ConversationModel } from "../chat/conversation/conversation.model";
 import { UserModel } from "../user/user.model";
 import { Request } from "express";
 import { NotificationHelper } from "../notification/notification.helper";
+import { InstantConsultancyModel } from "../instantConsultancy/instantConsultancy.model";
 
 const createAppointment = async (
   decodedUser: JwtPayload,
@@ -371,7 +372,8 @@ const getMyAppointments = async (
     filterQuery = { clientId: client._id };
   }
 
-  const appointments = Appointment.find(filterQuery)
+  // Fetch regular appointments
+  const appointments = await Appointment.find(filterQuery)
     .populate({
       path: 'lawyerId',
       select: '_id profile_Details userId',
@@ -385,20 +387,56 @@ const getMyAppointments = async (
       'paymentId',
       '_id amount type status description createdAt updatedAt',
     )
-    .sort({ createdAt: -1 });
+    .lean()
+    .exec();
 
-  const queryBuilder = new QueryBuilder(appointments, query);
+  // Add type field for regular appointments
+  const appointmentsWithType = appointments.map(apt => ({
+    ...apt,
+    type: 'appointment',
+  }));
 
-  const myAppointments = queryBuilder.filter().paginate();
+  // Fetch instant consultancy requests (for clients only)
+  let instantConsultancyRequests: any[] = [];
+  if (client) {
+    instantConsultancyRequests = await InstantConsultancyModel.find({
+      clientId: client._id,
+    })
+      .populate('categoryId', '_id name')
+      .lean()
+      .exec();
 
-  const [data, meta] = await Promise.all([
-    myAppointments.build().exec(),
-    queryBuilder.getMeta(),
-  ]);
+    // Format instant consultancy requests to match appointment structure
+    instantConsultancyRequests = instantConsultancyRequests.map(req => ({
+      _id: req._id,
+      type: 'instant_consultancy',
+      appointmentType: req.appointmentType,
+      status: req.status,
+      fee: req.fee,
+      note: req.note,
+      documents: req.documents,
+      channelName: req.channelName,
+      paymentStatus: req.paymentStatus,
+      paystationInvoiceNumber: req.paystationInvoiceNumber,
+      paystationTransactionId: req.paystationTransactionId,
+      categoryId: req.categoryId,
+      createdAt: req.createdAt,
+      updatedAt: req.updatedAt,
+    }));
+  }
+
+  // Combine and sort all bookings by createdAt descending
+  const allBookings = [...appointmentsWithType, ...instantConsultancyRequests]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return {
-    data,
-    meta,
+    data: allBookings,
+    meta: {
+      total: allBookings.length,
+      page: 1,
+      limit: allBookings.length,
+      pages: 1,
+    },
   };
 };
 
