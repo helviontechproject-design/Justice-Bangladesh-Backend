@@ -95,8 +95,40 @@ const deleteItem = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, { success: true, statusCode: StatusCodes.OK, message: 'Item deleted', data: result });
 });
 
+// PayStation callback handler - PUBLIC endpoint, no auth required
+const paymentCallback = catchAsync(async (req: Request, res: Response) => {
+  const orderId = (req.query.orderId || req.body.orderId) as string;
+  
+  if (!orderId) {
+    return sendResponse(res, { 
+      success: false, 
+      statusCode: StatusCodes.BAD_REQUEST, 
+      message: 'Order ID is required',
+      data: null 
+    });
+  }
+
+  try {
+    const result = await instantConsultancyService.verifyPaymentCallback(orderId);
+    return sendResponse(res, { 
+      success: true, 
+      statusCode: StatusCodes.OK, 
+      message: 'Payment verified successfully', 
+      data: result 
+    });
+  } catch (error: any) {
+    return sendResponse(res, { 
+      success: false, 
+      statusCode: error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR, 
+      message: error.message || 'Payment verification failed',
+      data: null 
+    });
+  }
+});
+
 export const instantConsultancyController = {
   initPayment,
+  paymentCallback, // ← ADD: Payment callback handler
   createRequest,
   acceptRequest,
   getPendingForLawyer,

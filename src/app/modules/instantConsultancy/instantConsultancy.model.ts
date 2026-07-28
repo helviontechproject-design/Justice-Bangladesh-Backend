@@ -16,6 +16,7 @@ const instantConsultancySchema = new Schema<IInstantConsultancy>(
       default: InstantConsultancyStatus.WAITING,
     },
     fee: { type: Number, default: INSTANT_CONSULTATION_FEE },
+    durationMinutes: { type: Number }, // Client-requested duration for the consultation
     paymentStatus: { type: String, enum: ['pending', 'paid'], default: 'pending' },
     paystationInvoiceNumber: { type: String },
     paystationTransactionId: { type: String },

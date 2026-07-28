@@ -14,6 +14,9 @@ router.post(
   instantConsultancyController.initPayment,
 );
 
+// PayStation callback: verify payment status (PUBLIC - no auth, PayStation calls this)
+router.get('/callback', instantConsultancyController.paymentCallback);
+
 // Client: step 2 — create request after payment (called after PayStation payment completion)
 router.post('/request', checkAuth(ERole.CLIENT), multerUpload.array('documents', 5), instantConsultancyController.createRequest);
 

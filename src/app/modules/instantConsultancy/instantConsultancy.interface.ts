@@ -39,6 +39,7 @@ export interface IInstantConsultancy extends Document {
   channelName?: string;
   status: InstantConsultancyStatus;
   fee: number;
+  durationMinutes?: number; // Client-requested duration for the consultation
   paymentStatus: 'pending' | 'paid';
   paystationInvoiceNumber?: string;
   paystationTransactionId?: string;
