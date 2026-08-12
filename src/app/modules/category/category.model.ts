@@ -7,7 +7,8 @@ function slugify(s: string) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\-]/g, '')
+    // Allow Unicode letters, numbers, and hyphens
+    .replace(/[^\p{L}\p{N}\-]/gu, '')
     .replace(/\-+/g, '-')
     .replace(/^\-+|\-+$/g, '');
 }

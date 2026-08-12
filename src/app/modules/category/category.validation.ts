@@ -10,8 +10,8 @@ export const categoryZ = z.object({
   slug: z
     .string()
     .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      'invalid slug (use lower-case letters, numbers and hyphens)'
+      /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u,
+      'invalid slug (use letters, numbers and hyphens)'
     )
     .optional(),
   imageUrl: z.string().url('invalid url').optional(),
