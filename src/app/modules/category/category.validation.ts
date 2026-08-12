@@ -2,6 +2,13 @@ import { z } from 'zod';
 
 const booleanField = z.union([z.boolean(), z.string().transform((v) => v === 'true')]);
 
+// Slug validation: allows any non-whitespace characters (including Unicode), numbers, and hyphens
+const isValidSlug = (slug: string) => {
+  // Allow letters (any language), numbers, and hyphens, but no spaces or special symbols
+  // This pattern matches: word characters (including Unicode) and hyphens
+  return /^[\w-]+$/u.test(slug);
+};
+
 export const categoryZ = z.object({
   name: z
     .string()
@@ -9,10 +16,7 @@ export const categoryZ = z.object({
     .max(100, 'name max 100 chars'),
   slug: z
     .string()
-    .regex(
-      /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u,
-      'invalid slug (use letters, numbers and hyphens)'
-    )
+    .refine(isValidSlug, 'invalid slug (use letters, numbers and hyphens)')
     .optional(),
   imageUrl: z.string().url('invalid url').optional(),
   isFeatured: booleanField.optional(),
