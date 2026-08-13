@@ -3,14 +3,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CategoryModel = void 0;
 const mongoose_1 = require("mongoose");
 function slugify(s) {
-    return s
-        .toString()
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9\-]/g, '')
-        .replace(/\-+/g, '-')
-        .replace(/^\-+|\-+$/g, '');
+    // Convert to lowercase and trim
+    let slug = s.toString().toLowerCase().trim();
+    // Replace spaces with hyphens
+    slug = slug.replace(/\s+/g, '-');
+    // Remove any character that's not: Unicode letters, numbers, or hyphens
+    // This preserves Bangla, Arabic, Chinese, etc. characters
+    slug = slug.replace(/[^\p{L}\p{N}\-]/gu, '');
+    // Collapse multiple hyphens into one
+    slug = slug.replace(/\-+/g, '-');
+    // Remove leading/trailing hyphens
+    slug = slug.replace(/^\-+|\-+$/g, '');
+    // If slug is empty after all replacements, use a fallback
+    if (!slug) {
+        slug = 'category-' + Date.now();
+    }
+    return slug;
 }
 const categorySchema = new mongoose_1.Schema({
     name: {

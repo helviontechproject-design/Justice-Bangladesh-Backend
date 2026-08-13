@@ -256,6 +256,7 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
         channelName,
         status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
         fee: consultationFee, // Use determined fee (item fee or default)
+        durationMinutes: payload.durationMinutes, // ← SAVE: Client-requested duration
         paymentStatus: PAYMENT_ENABLED ? 'paid' : 'pending',
         paystationInvoiceNumber: payload.orderId,
         paystationTransactionId,
@@ -295,7 +296,7 @@ const createRequest = (decodedUser, payload) => __awaiter(void 0, void 0, void 0
         clientToken,
         appId,
         fee: consultationFee, // Return actual fee being charged
-        durationMinutes: settings.durationMinutes,
+        durationMinutes: payload.durationMinutes, // ← RETURN: Duration so client can sync state
         status: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
     };
 });
@@ -441,6 +442,42 @@ const deleteItem = (id) => __awaiter(void 0, void 0, void 0, function* () {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Item not found');
     return item;
 });
+// ── Payment Callback Verification ────────────────────────────────────────
+const verifyPaymentCallback = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('[Callback] 🔔 Verifying payment for orderId:', orderId);
+    if (!orderId || orderId.trim().length === 0) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Order ID is required');
+    }
+    try {
+        // Import PayStation service
+        const { PayStationService } = yield Promise.resolve().then(() => __importStar(require('../payment/paystation/paystation.service')));
+        // Check payment status with PayStation
+        const paymentStatus = yield PayStationService.checkTransactionStatus({ invoice_number: orderId });
+        if (!paymentStatus.success) {
+            console.log('[Callback] ❌ Payment verification failed:', paymentStatus.status);
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.PAYMENT_REQUIRED, `Payment status: ${paymentStatus.status}`);
+        }
+        console.log('[Callback] ✅ Payment verified successfully:', {
+            orderId,
+            amount: paymentStatus.amount,
+            transactionId: paymentStatus.transaction_id,
+            method: paymentStatus.payment_method,
+        });
+        // Return success with payment details
+        return {
+            verified: true,
+            orderId,
+            amount: paymentStatus.amount,
+            transactionId: paymentStatus.transaction_id,
+            paymentMethod: paymentStatus.payment_method,
+            paymentDate: paymentStatus.payment_date,
+        };
+    }
+    catch (error) {
+        console.error('[Callback] ⚠️ Payment verification error:', error.message);
+        throw error;
+    }
+});
 exports.instantConsultancyService = {
     initPayment,
     createRequest,
@@ -457,4 +494,5 @@ exports.instantConsultancyService = {
     getAllItems,
     updateItem,
     deleteItem,
+    verifyPaymentCallback, // ← ADD: Verify payment callback from PayStation
 };

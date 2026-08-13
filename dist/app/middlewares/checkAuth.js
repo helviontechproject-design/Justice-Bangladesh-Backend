@@ -36,6 +36,7 @@ const checkAuth = (...authRole) => (req, res, next) => __awaiter(void 0, void 0,
         const decodedToken = (0, jwt_1.verifyToken)(accessToken, env_1.envVars.JWT_ACCESS_SECRET);
         const isUserExist = yield user_model_1.UserModel.findById(decodedToken.userId);
         if (!isUserExist) {
+            console.error('[Auth] User not found for ID:', decodedToken.userId);
             throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'User does not exist');
         }
         if (isUserExist.isActive === user_interface_1.EIsActive.BLOCKED ||

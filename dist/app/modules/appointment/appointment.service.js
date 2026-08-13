@@ -836,10 +836,14 @@ const cancelUnpaidAppointments = () => __awaiter(void 0, void 0, void 0, functio
     // const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000);
     let session;
     try {
-        session = yield mongoose_1.default.startSession();
-        session.startTransaction();
+        // Only start transaction if not in standalone mode
+        if (process.env.NODE_ENV !== 'development') {
+            session = yield mongoose_1.default.startSession();
+            session.startTransaction();
+        }
     }
     catch (error) {
+        console.warn('⚠️  Transactions not supported (running in standalone mode)');
         session = null;
     }
     try {

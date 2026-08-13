@@ -2,15 +2,28 @@ import { Schema, model } from 'mongoose';
 import { ICategory } from './category.interface';
 
 function slugify(s: string) {
-  return s
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    // Allow Unicode word characters (letters from any language, numbers) and hyphens
-    .replace(/[^\w-]/gu, '')
-    .replace(/\-+/g, '-')
-    .replace(/^\-+|\-+$/g, '');
+  // Convert to lowercase and trim
+  let slug = s.toString().toLowerCase().trim();
+  
+  // Replace spaces with hyphens
+  slug = slug.replace(/\s+/g, '-');
+  
+  // Remove any character that's not: Unicode letters, numbers, or hyphens
+  // This preserves Bangla, Arabic, Chinese, etc. characters
+  slug = slug.replace(/[^\p{L}\p{N}\-]/gu, '');
+  
+  // Collapse multiple hyphens into one
+  slug = slug.replace(/\-+/g, '-');
+  
+  // Remove leading/trailing hyphens
+  slug = slug.replace(/^\-+|\-+$/g, '');
+  
+  // If slug is empty after all replacements, use a fallback
+  if (!slug) {
+    slug = 'category-' + Date.now();
+  }
+  
+  return slug;
 }
 
 const categorySchema = new Schema<ICategory>(

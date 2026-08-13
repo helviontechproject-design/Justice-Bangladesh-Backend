@@ -9,6 +9,8 @@ const multer_config_1 = require("../../config/multer.config");
 const router = (0, express_1.Router)();
 // Client: step 1 — upload docs + initiate PayStation payment → returns payment URL
 router.post('/init-payment', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), multer_config_1.multerUpload.array('documents', 5), instantConsultancy_controller_1.instantConsultancyController.initPayment);
+// PayStation callback: verify payment status (PUBLIC - no auth, PayStation calls this)
+router.get('/callback', instantConsultancy_controller_1.instantConsultancyController.paymentCallback);
 // Client: step 2 — create request after payment (called after PayStation payment completion)
 router.post('/request', (0, checkAuth_1.checkAuth)(user_interface_1.ERole.CLIENT), multer_config_1.multerUpload.array('documents', 5), instantConsultancy_controller_1.instantConsultancyController.createRequest);
 // Client: check status of their request (poll every 3s)

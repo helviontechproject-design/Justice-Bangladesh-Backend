@@ -100,8 +100,17 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
     );
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session;
+  try {
+    // Only start transaction if not in development mode
+    if (process.env.NODE_ENV !== 'development') {
+      session = await mongoose.startSession();
+      session.startTransaction();
+    }
+  } catch (error) {
+    console.warn('⚠️  Transactions not supported (running in standalone mode)');
+    session = null;
+  }
 
   try {
     const user = await UserModel.create(
@@ -116,7 +125,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
           isActive: EIsActive.INACTIVE,
         },
       ],
-      { session },
+      session ? { session } : {},
     );
 
     const userId = user[0]._id;
@@ -148,7 +157,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
           inPerson: (payload as any).inPerson || false,
         },
       ],
-      { session },
+      session ? { session } : {},
     );
 
     const lawyerId = lawyerProfile[0]._id;
@@ -159,7 +168,7 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
           lawyerId,
         },
       ],
-      { session },
+      session ? { session } : {},
     );
 
     const walletId = wallet[0]._id;
@@ -169,22 +178,24 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
       {
         walletId: walletId,
       },
-      { new: true, session },
+      session ? { new: true, session } : { new: true },
     );
 
     await UserModel.findByIdAndUpdate(
       userId,
       { lawyer: lawyerId },
-      { new: true, session },
+      session ? { new: true, session } : { new: true },
     );
 
     // Send SMS OTP
     if (OTP_ENABLED) {
       const otp = generateOTP();
       const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-      await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
-      await session.commitTransaction();
-      session.endSession();
+      await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, session ? { session } : {});
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
       await sendOTPViaSMS(phone, otp);
       
       // 🔍 DEBUG: Send OTP in response for auto-fill in development
@@ -202,8 +213,10 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
         },
       };
     } else {
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
     }
 
     return {
@@ -212,8 +225,10 @@ export const createLawyerAccount = async (payload: Partial<IUserBasicInfo>) => {
       data: { userId, lawyerId },
     };
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    if (session) {
+      await session.abortTransaction();
+      session.endSession();
+    }
     throw new AppError(StatusCodes.INTERNAL_SERVER_ERROR, `${error}`);
   }
 };
@@ -246,8 +261,17 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
     );
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session;
+  try {
+    // Only start transaction if not in development mode
+    if (process.env.NODE_ENV !== 'development') {
+      session = await mongoose.startSession();
+      session.startTransaction();
+    }
+  } catch (error) {
+    console.warn('⚠️  Transactions not supported (running in standalone mode)');
+    session = null;
+  }
 
   try {
     const user = await UserModel.create(
@@ -263,7 +287,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
           isActive: "ACTIVE",
         },
       ],
-      { session },
+      session ? { session } : {},
     );
 
     const userId = user[0]._id;
@@ -284,7 +308,7 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
           gender: "MALE",
         },
       ],
-      { session },
+      session ? { session } : {},
     );
 
     const clientId = ClientProfile[0]._id;
@@ -292,16 +316,18 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
     await UserModel.findByIdAndUpdate(
       userId,
       { client: clientId },
-      { new: true, session },
+      session ? { new: true, session } : { new: true },
     );
 
     // Send SMS OTP
     if (OTP_ENABLED) {
       const otp = generateOTP();
       const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-      await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
-      await session.commitTransaction();
-      session.endSession();
+      await UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, session ? { session } : {});
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
       await sendOTPViaSMS(phone, otp);
       
       // 🔍 DEBUG: Send OTP in response for auto-fill in development
@@ -313,14 +339,16 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
         success: true,
         message: 'Client account created successfully. Verification code sent via SMS!',
         data: { 
-          userId, 
+          userId,
           clientId, 
           debugOtp: otp  // ← Simple, no nested wrapper
         },
       };
     } else {
-      await session.commitTransaction();
-      session.endSession();
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
     }
 
     return {
@@ -329,8 +357,10 @@ export const createClientAccount = async (payload: Partial<IUserBasicInfo>) => {
       data: { userId, clientId },
     };
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    if (session) {
+      await session.abortTransaction();
+      session.endSession();
+    }
     throw new AppError(StatusCodes.INTERNAL_SERVER_ERROR, `${error}`);
   }
 };

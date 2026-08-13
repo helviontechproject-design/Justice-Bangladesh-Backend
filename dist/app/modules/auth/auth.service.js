@@ -97,8 +97,18 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
     if (isEmailExist) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Email already exists! Please use a different Email.");
     }
-    const session = yield mongoose_1.default.startSession();
-    session.startTransaction();
+    let session;
+    try {
+        // Only start transaction if not in development mode
+        if (process.env.NODE_ENV !== 'development') {
+            session = yield mongoose_1.default.startSession();
+            session.startTransaction();
+        }
+    }
+    catch (error) {
+        console.warn('⚠️  Transactions not supported (running in standalone mode)');
+        session = null;
+    }
     try {
         const user = yield user_model_1.UserModel.create([
             {
@@ -110,7 +120,7 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
                 isVerified: !OTP_ENABLED,
                 isActive: user_interface_1.EIsActive.INACTIVE,
             },
-        ], { session });
+        ], session ? { session } : {});
         const userId = user[0]._id;
         const lawyerProfile = yield lawyer_model_1.LawyerProfileModel.create([
             {
@@ -137,25 +147,27 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
                 audioCall: payload.audioCall || false,
                 inPerson: payload.inPerson || false,
             },
-        ], { session });
+        ], session ? { session } : {});
         const lawyerId = lawyerProfile[0]._id;
         const wallet = yield wallet_model_1.WalletModel.create([
             {
                 lawyerId,
             },
-        ], { session });
+        ], session ? { session } : {});
         const walletId = wallet[0]._id;
         yield lawyer_model_1.LawyerProfileModel.findByIdAndUpdate(lawyerId, {
             walletId: walletId,
-        }, { new: true, session });
-        yield user_model_1.UserModel.findByIdAndUpdate(userId, { lawyer: lawyerId }, { new: true, session });
+        }, session ? { new: true, session } : { new: true });
+        yield user_model_1.UserModel.findByIdAndUpdate(userId, { lawyer: lawyerId }, session ? { new: true, session } : { new: true });
         // Send SMS OTP
         if (OTP_ENABLED) {
             const otp = generateOTP();
             const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-            yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
-            yield session.commitTransaction();
-            session.endSession();
+            yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, session ? { session } : {});
+            if (session) {
+                yield session.commitTransaction();
+                session.endSession();
+            }
             yield sendOTPViaSMS(phone, otp);
             // 🔍 DEBUG: Send OTP in response for auto-fill in development
             if (process.env.NODE_ENV !== 'production') {
@@ -172,8 +184,10 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             };
         }
         else {
-            yield session.commitTransaction();
-            session.endSession();
+            if (session) {
+                yield session.commitTransaction();
+                session.endSession();
+            }
         }
         return {
             success: true,
@@ -182,8 +196,10 @@ const createLawyerAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         };
     }
     catch (error) {
-        yield session.abortTransaction();
-        session.endSession();
+        if (session) {
+            yield session.abortTransaction();
+            session.endSession();
+        }
         throw new AppError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, `${error}`);
     }
 });
@@ -205,8 +221,18 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
     if (isEmailExist) {
         throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Email already exists! Please use a different Email.");
     }
-    const session = yield mongoose_1.default.startSession();
-    session.startTransaction();
+    let session;
+    try {
+        // Only start transaction if not in development mode
+        if (process.env.NODE_ENV !== 'development') {
+            session = yield mongoose_1.default.startSession();
+            session.startTransaction();
+        }
+    }
+    catch (error) {
+        console.warn('⚠️  Transactions not supported (running in standalone mode)');
+        session = null;
+    }
     try {
         const user = yield user_model_1.UserModel.create([
             {
@@ -219,7 +245,7 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
                 isVerified: !OTP_ENABLED,
                 isActive: "ACTIVE",
             },
-        ], { session });
+        ], session ? { session } : {});
         const userId = user[0]._id;
         const ClientProfile = yield client_model_1.ClientProfileModel.create([
             {
@@ -235,16 +261,18 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
                 },
                 gender: "MALE",
             },
-        ], { session });
+        ], session ? { session } : {});
         const clientId = ClientProfile[0]._id;
-        yield user_model_1.UserModel.findByIdAndUpdate(userId, { client: clientId }, { new: true, session });
+        yield user_model_1.UserModel.findByIdAndUpdate(userId, { client: clientId }, session ? { new: true, session } : { new: true });
         // Send SMS OTP
         if (OTP_ENABLED) {
             const otp = generateOTP();
             const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-            yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, { session });
-            yield session.commitTransaction();
-            session.endSession();
+            yield user_model_1.UserModel.findByIdAndUpdate(userId, { otpCode: otp, otpExpiry }, session ? { session } : {});
+            if (session) {
+                yield session.commitTransaction();
+                session.endSession();
+            }
             yield sendOTPViaSMS(phone, otp);
             // 🔍 DEBUG: Send OTP in response for auto-fill in development
             if (process.env.NODE_ENV !== 'production') {
@@ -261,8 +289,10 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
             };
         }
         else {
-            yield session.commitTransaction();
-            session.endSession();
+            if (session) {
+                yield session.commitTransaction();
+                session.endSession();
+            }
         }
         return {
             success: true,
@@ -271,8 +301,10 @@ const createClientAccount = (payload) => __awaiter(void 0, void 0, void 0, funct
         };
     }
     catch (error) {
-        yield session.abortTransaction();
-        session.endSession();
+        if (session) {
+            yield session.abortTransaction();
+            session.endSession();
+        }
         throw new AppError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, `${error}`);
     }
 });

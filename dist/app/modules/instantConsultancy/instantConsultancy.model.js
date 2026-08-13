@@ -17,6 +17,7 @@ const instantConsultancySchema = new mongoose_1.Schema({
         default: instantConsultancy_interface_1.InstantConsultancyStatus.WAITING,
     },
     fee: { type: Number, default: instantConsultancy_interface_1.INSTANT_CONSULTATION_FEE },
+    durationMinutes: { type: Number }, // Client-requested duration for the consultation
     paymentStatus: { type: String, enum: ['pending', 'paid'], default: 'pending' },
     paystationInvoiceNumber: { type: String },
     paystationTransactionId: { type: String },

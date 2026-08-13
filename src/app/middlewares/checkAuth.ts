@@ -31,6 +31,7 @@ export const checkAuth = (...authRole: string[]) => async (req: Request, res: Re
       const isUserExist = await UserModel.findById(decodedToken.userId);
 
       if (!isUserExist) {
+        console.error('[Auth] User not found for ID:', decodedToken.userId);
         throw new AppError(StatusCodes.BAD_REQUEST, 'User does not exist');
       }
       if (

@@ -10,7 +10,7 @@ exports.categoryZ = zod_1.z.object({
         .max(100, 'name max 100 chars'),
     slug: zod_1.z
         .string()
-        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'invalid slug (use lower-case letters, numbers and hyphens)')
+        .min(1, 'slug cannot be empty')
         .optional(),
     imageUrl: zod_1.z.string().url('invalid url').optional(),
     isFeatured: booleanField.optional(),

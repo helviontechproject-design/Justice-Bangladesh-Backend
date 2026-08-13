@@ -90,8 +90,38 @@ const deleteItem = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, 
     const result = yield instantConsultancy_service_1.instantConsultancyService.deleteItem(req.params.id);
     (0, sendResponse_1.default)(res, { success: true, statusCode: http_status_codes_1.StatusCodes.OK, message: 'Item deleted', data: result });
 }));
+// PayStation callback handler - PUBLIC endpoint, no auth required
+const paymentCallback = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const orderId = (req.query.orderId || req.body.orderId);
+    if (!orderId) {
+        return (0, sendResponse_1.default)(res, {
+            success: false,
+            statusCode: http_status_codes_1.StatusCodes.BAD_REQUEST,
+            message: 'Order ID is required',
+            data: null
+        });
+    }
+    try {
+        const result = yield instantConsultancy_service_1.instantConsultancyService.verifyPaymentCallback(orderId);
+        return (0, sendResponse_1.default)(res, {
+            success: true,
+            statusCode: http_status_codes_1.StatusCodes.OK,
+            message: 'Payment verified successfully',
+            data: result
+        });
+    }
+    catch (error) {
+        return (0, sendResponse_1.default)(res, {
+            success: false,
+            statusCode: error.statusCode || http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR,
+            message: error.message || 'Payment verification failed',
+            data: null
+        });
+    }
+}));
 exports.instantConsultancyController = {
     initPayment,
+    paymentCallback, // ← ADD: Payment callback handler
     createRequest,
     acceptRequest,
     getPendingForLawyer,

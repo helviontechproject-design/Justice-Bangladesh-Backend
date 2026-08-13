@@ -1051,9 +1051,13 @@ const cancelUnpaidAppointments = async () => {
 
   let session;
   try {
-    session = await mongoose.startSession();
-    session.startTransaction();
+    // Only start transaction if not in standalone mode
+    if (process.env.NODE_ENV !== 'development') {
+      session = await mongoose.startSession();
+      session.startTransaction();
+    }
   } catch (error) {
+    console.warn('⚠️  Transactions not supported (running in standalone mode)');
     session = null;
   }
 
@@ -1062,7 +1066,7 @@ const cancelUnpaidAppointments = async () => {
     const unpaidAppointments = await Appointment.find({
       payment_Status: AppointmentPaymentStatus.UNPAID,
       createdAt: { $lte: thirtyMinutesAgo },
-    }).session(session);
+    }).session(session as any);
 
     if (unpaidAppointments.length === 0) {
       if (session) {
